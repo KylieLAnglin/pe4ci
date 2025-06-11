@@ -1,0 +1,7 @@
+numpy
+openai
+pandas
+scikit-learn
+scipy
+statsmodels
+tqdm

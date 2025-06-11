@@ -1,0 +1,28 @@
+# data
+**/data
+!crisp/8_hpc/data/
+
+# Mac OS System Files
+.DS_Store
+
+# Python Files
+*__pycache__
+*.pytest_cache
+*.pyc
+
+# VS Code Files
+.vscode/
+*.code-workspace
+
+# Jupyter Notebook Files
+.ipynb_checkpoints/
+.ipynb_checkpoints
+
+# Domino Files
+*.dominokeep
+
+# Other
+.venv
+*.xml
+*.iml
+pe4ci/library/secrets.py
