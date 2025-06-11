@@ -27,7 +27,7 @@ In the `pe4ci/library/` folder, create a file named `secrets.py` containing just
 
 Edit `pe4ci/library/start.py` to define the correct file paths and settings:
 
-- Input file paths (e.g., train/dev CSVs)
+- Input file paths 
 - Output directories
 - Selected platform (e.g., "openai", "llama3")
 - Target construct (e.g., "gratitude", "ncb", "mm")
