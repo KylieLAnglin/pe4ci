@@ -8,7 +8,7 @@
 
 PLATFORM = "openai"
 CONCEPT = "gratitude"
-SAMPLE = True
+SAMPLE = False
 
 
 CODE_DIR = "/Users/kla21002/pe4ci/code/"
