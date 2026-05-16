@@ -1,30 +1,26 @@
-# 2_APE/02_APE_dev.py
 # %%
 import pandas as pd
-from tqdm import tqdm
-import os
-import sys
 
-PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
-sys.path.append(PROJECT_ROOT)
-from pe4ci.library import start, classify
+from crisp.library import start, classify
 
+# %%
 # ------------------ SETUP ------------------
 CONCEPT = start.CONCEPT
 PLATFORM = start.PLATFORM
 MODEL = start.MODEL
-SAMPLE = start.SAMPLE
+SAMPLE = False
 SEED = start.SEED
+TEMPERATURE = 0.0001
 
 print(f"Running {CONCEPT} on {PLATFORM} with {MODEL} in dev set")
 
-# ------------------ PATHS ------------------
-DATA_PATH = start.DATA_DIR + f"clean/{CONCEPT}.xlsx"
+DATA_PATH = start.DATA_DIR + f"clean/{CONCEPT}_final.xlsx"
+GOLD_PATH = start.DATA_DIR + f"clean/{CONCEPT}_coding_final.xlsx"
+
 PROMPT_PATH_TOP = start.RESULTS_DIR + f"{PLATFORM}_{CONCEPT}_ape_top_results_train.xlsx"
 PROMPT_PATH_BOTTOM = (
     start.RESULTS_DIR + f"{PLATFORM}_{CONCEPT}_ape_bottom_results_train.xlsx"
 )
-
 
 EXPORT_RESPONSE_PATH = (
     start.DATA_DIR + f"responses_dev/{PLATFORM}_{CONCEPT}_ape_zero_responses_dev.xlsx"
@@ -33,58 +29,86 @@ EXPORT_RESULTS_PATH = (
     start.MAIN_DIR + f"results/{PLATFORM}_{CONCEPT}_ape_zero_results_dev.xlsx"
 )
 
-
+# %%
 # ------------------ LOAD BEST PROMPTS ------------------
-def load_best_prompts(path_top, path_bottom):
-    df_top = pd.read_excel(path_top)
-    df_top["category"] = "top"
+df_top = pd.read_excel(PROMPT_PATH_TOP)
+df_top["category"] = "top"
 
-    df_bottom = pd.read_excel(path_bottom)
-    df_bottom["category"] = "bottom"
+df_bottom = pd.read_excel(PROMPT_PATH_BOTTOM)
+df_bottom["category"] = "bottom"
 
-    df = pd.concat([df_top, df_bottom], ignore_index=True)
-    df["prompt_id"] = (
-        df.generation.astype(int).astype(str)
-        + "_"
-        + df.variant_id.astype(int).astype(str)
-        + "_"
-        + df.category
-    )
-    df["prompt"] = df["prompt"].str.replace("Text:", "", regex=False)
-    df = df.set_index("prompt_id")
+prompt_df = pd.concat([df_top, df_bottom], ignore_index=True)
+prompt_df["prompt_id"] = (
+    prompt_df["generation"].astype(int).astype(str)
+    + "_"
+    + prompt_df["variant_id"].astype(int).astype(str)
+    + "_"
+    + prompt_df["category"]
+)
 
-    top_id = df[df.category == "top"]["f1_score"].idxmax()
-    bottom_id = df[df.category == "bottom"]["f1_score"].idxmax()
+top_prompt_df = (
+    prompt_df[prompt_df["category"] == "top"]
+    .sort_values("f1_score", ascending=False)
+    .head(1)
+)
+bottom_prompt_df = (
+    prompt_df[prompt_df["category"] == "bottom"]
+    .sort_values("f1_score", ascending=False)
+    .head(1)
+)
 
-    return df.loc[[top_id, bottom_id]]
+prompt_df = pd.concat([top_prompt_df, bottom_prompt_df], ignore_index=True)
 
-
-prompt_df = load_best_prompts(PROMPT_PATH_TOP, PROMPT_PATH_BOTTOM)
-
+# %%
 # ------------------ LOAD TEXT DATA ------------------
 df = pd.read_excel(DATA_PATH)
-df = df[df.split_group == "dev"]
+df = df[df["split_group"] == "dev"].copy()
+
 if SAMPLE:
-    df = df.sample(5, random_state=SEED)
+    df = df.sample(5, random_state=SEED).copy()
 
+df_gold = pd.read_excel(GOLD_PATH)
+df_gold = df_gold[["unique_text_id", "human_code"]].copy()
+
+# %%
 # ------------------ EVALUATE PROMPTS ------------------
-all_rows = []
-for prompt_id, prompt_text in prompt_df["prompt"].items():
-    rows = classify.evaluate_prompt(prompt_text, prompt_id, df, PLATFORM, 0.0001)
-    all_rows.extend(rows)
+response_rows = []
 
+for row in prompt_df.itertuples(index=False):
+    rows = classify.get_classifications_from_prompt(
+        prompt_text=row.prompt,
+        prompt_id=row.prompt_id,
+        df=df[["unique_text_id", "text"]].copy(),
+        platform=PLATFORM,
+        temperature=TEMPERATURE,
+    )
+
+    for response_row in rows:
+        response_row["category"] = row.category
+        response_row["generation"] = row.generation
+        response_row["variant_id"] = row.variant_id
+
+    response_rows.extend(rows)
+
+# %%
 # ------------------ SAVE RESPONSES ------------------
-long_df = pd.DataFrame(all_rows)
+long_df = pd.DataFrame(response_rows)
 long_df.to_excel(EXPORT_RESPONSE_PATH, index=False)
-long_df = pd.read_excel(EXPORT_RESPONSE_PATH)
+print(f"Saved: {EXPORT_RESPONSE_PATH}")
 
+# %%
 # ------------------ EXPORT METRICS ------------------
+long_df = pd.read_excel(EXPORT_RESPONSE_PATH)
+scored_df = long_df.merge(df_gold, on="unique_text_id", how="inner")
+
 classify.export_results_to_excel(
-    df=long_df,
+    df=scored_df,
     output_path=EXPORT_RESULTS_PATH,
-    group_col="prompt_id",
+    group_col=["prompt_id", "category", "generation", "variant_id"],
     prompt_col="prompt",
+    y_true_col="human_code",
+    y_pred_col="classification",
     sheet_name="results",
     include_se=True,
 )
-# %%
+print(f"Saved: {EXPORT_RESULTS_PATH}")
