@@ -18,7 +18,7 @@ RESULTS_DIR = MAIN_DIR + "results/"
 
 # ------------------ MODEL ------------------
 if PLATFORM == "openai":
-    MODEL = "gpt-4.1-2025-04-14"
+    MODEL = "gpt-5.4-2026-03-05"
 elif PLATFORM == "llama3.3":  # requires HPC environment
     MODEL = "llama3.3:latest"
 
