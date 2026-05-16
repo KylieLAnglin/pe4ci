@@ -1,11 +1,15 @@
 # PE4CI Setup Instructions
 
 This code can be used to (non-deterministically) replicate the "gratitude" results in Prompt Engineering for Construct Identification. 
+The dataset is from: https://github.com/google-research/google-research/tree/master/goemotions
+
+Demszky, D., Movshovitz-Attias, D., Ko, J., Cowen, A., Nemade, G., & Ravi, S. (2020). GoEmotions: A dataset of fine-grained emotions. arXiv Preprint arXiv:2005.00547. https://doi.org/https://doi.org/10.48550/arXiv.2005.00547
 
 Notes: 
 * LLaMA requires additional setup in a high-performance computing environment. See:
 https://kb.uconn.edu/space/SH/27688501251/Ollama and
 https://github.com/hernandezb3/llama-on-uconn-hpc for more information though exact instructions will depend on the environment. 
+
 
 * Negative Core Beliefs (NCB) and Meaning Making (MM) tasks require data that are not publicly available.
 
