@@ -60,3 +60,21 @@ Using conda:
 4. Running the Code
 
 Code must be run in order of folders (e.g., files in 1_baseline_prompt must be run before 2_APE file) and files within folders (e.g., 00_baseline_prep.py before 01_baseline_train.py)
+
+FOR ADAPTATION:
+
+The code assume a {CONSTRUCT}_final.xlsx and {CONSTRUCT}_coding_final.xlsx. 
+{CONSTRUCT}_final.xlsx should contain the following columns: 
+participant_id
+split_group (train, dev, test)
+train_use (eval or example)
+study (can be a default number)
+question (can be a default number)
+unique_text_id (id unique to the text)
+text
+
+{CONSTRUCT}_coding_final.xlsx. should contain atleast:
+unique_text_id
+human_code
+
+A {CONSTRUCT}_baseline_variants.xlsx file can be created by replacing the content of the uploaded examples with guidance relevant to the construct of interest. 
