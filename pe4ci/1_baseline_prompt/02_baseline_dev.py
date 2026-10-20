@@ -45,9 +45,8 @@ df_gold = df_gold[["unique_text_id", "human_code"]].copy()
 train_results = pd.read_excel(IMPORT_RESULTS_PATH, sheet_name="results")
 
 top_id = train_results.loc[train_results["F1"].idxmax(), "prompt_id"]
-bottom_id = train_results.loc[train_results["F1"].idxmin(), "prompt_id"]
 
-prompt_df = train_results[train_results["prompt_id"].isin([top_id, bottom_id])].copy()
+prompt_df = train_results[train_results["prompt_id"] == top_id].copy()
 
 # %%
 # ------------------ GENERATE RESPONSES ------------------

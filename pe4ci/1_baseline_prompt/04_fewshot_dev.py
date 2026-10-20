@@ -44,14 +44,8 @@ df_gold = df_gold[["unique_text_id", "human_code"]].copy()
 # ------------------ LOAD TRAINING FEWSHOT RESULTS ------------------
 prompt_df = pd.read_excel(BASELINE_RESULTS_PATH, sheet_name="results")
 
-# keep highest-F1 prompt for each category (break ties by first occurrence)
-prompt_df = (
-    prompt_df
-    .sort_values(["category", "F1"], ascending=[True, False])
-    .drop_duplicates(subset=["category"], keep="first")
-    .reset_index(drop=True)
-)
-prompt_df = prompt_df.reset_index(drop=True)
+# keep highest-F1 prompt (break ties by first occurrence)
+prompt_df = prompt_df.sort_values("F1", ascending=False).head(1).reset_index(drop=True)
 
 # %%
 # ------------------ GENERATE RESPONSES ------------------
@@ -71,7 +65,6 @@ for row in tqdm(
     )
 
     for response_row in responses:
-        response_row["category"] = row.category
         response_row["num_examples"] = row.num_examples
 
     response_rows.extend(responses)
@@ -90,7 +83,7 @@ scored_df = long_df.merge(df_gold, on="unique_text_id", how="inner")
 classify.export_results_to_excel(
     df=scored_df,
     output_path=RESULTS_PATH,
-    group_col=["prompt_id", "category", "num_examples"],
+    group_col=["prompt_id", "num_examples"],
     prompt_col="prompt",
     y_true_col="human_code",
     y_pred_col="classification",
