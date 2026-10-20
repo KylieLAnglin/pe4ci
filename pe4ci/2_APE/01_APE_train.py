@@ -48,18 +48,9 @@ IMPORT_RESULTS_PATH = (
     start.MAIN_DIR + f"results/{PLATFORM}_{CONCEPT}_baseline_zero_results_dev.xlsx"
 )
 
-TRACKING_PATHS = {
-    "top": {
-        "csv": f"{start.RESULTS_DIR}{PLATFORM}_{CONCEPT}_ape_top_results_train.xlsx",
-        "progress": f"{start.RESULTS_DIR}{PLATFORM}_{CONCEPT}_ape_top_results_train_PROGRESS{RUN_TAG}.xlsx",
-        "fig": f"{start.RESULTS_DIR}{PLATFORM}_{CONCEPT}_ape_evolution_top_train.png",
-    },
-    "bottom": {
-        "csv": f"{start.RESULTS_DIR}{PLATFORM}_{CONCEPT}_ape_bottom_results_train.xlsx",
-        "progress": f"{start.RESULTS_DIR}{PLATFORM}_{CONCEPT}_ape_bottom_results_train_PROGRESS{RUN_TAG}.xlsx",
-        "fig": f"{start.RESULTS_DIR}{PLATFORM}_{CONCEPT}_ape_evolution_bottom_train.png",
-    },
-}
+TRACKING_PATH = f"{start.RESULTS_DIR}{PLATFORM}_{CONCEPT}_ape_tracking_train.xlsx"
+TRACKING_PROGRESS_PATH = f"{start.RESULTS_DIR}{PLATFORM}_{CONCEPT}_ape_tracking_train_PROGRESS{RUN_TAG}.xlsx"
+FIGURE_PATH = f"{start.RESULTS_DIR}{PLATFORM}_{CONCEPT}_ape_evolution_train.png"
 
 EXPORT_RESPONSE_PATH = (
     start.DATA_DIR + f"responses_train/{PLATFORM}_{CONCEPT}_ape_zero_responses_train.xlsx"
@@ -100,12 +91,6 @@ if (original_prompts == prompt_df["prompt"]).all():
     )
 
 # %%
-# ------------------ APE LOOP ------------------
-prompts = [
-    ("top", prompt_df["F1"].idxmax()),
-    ("bottom", prompt_df["F1"].idxmin()),
-]
-
 # ------------------ RESUME RESPONSES ------------------
 try:
     existing_response_df = pd.read_excel(TEMP_RESPONSE_PATH)
@@ -115,109 +100,104 @@ except FileNotFoundError:
     all_response_rows = []
     print("No existing response progress file found")
 
-# ------------------ COLLECT ALL RESPONSES ------------------
-for cat, index in prompts:
-    print(f"\n======== Evaluating {cat.upper()} Prompt Seed ========")
+# %%
+# ------------------ APE LOOP (SEEDED WITH TOP BASELINE PROMPT) ------------------
+try:
+    tracking_df = pd.read_excel(TRACKING_PROGRESS_PATH)
+    tracking_records = tracking_df.to_dict("records")
+    print(f"Found existing tracking progress: {len(tracking_df)} rows")
+except FileNotFoundError:
+    tracking_df = pd.DataFrame()
+    tracking_records = []
+    print("No existing tracking progress file found")
 
-    output_tracking_file = TRACKING_PATHS[cat]["csv"]
-    tracking_progress_file = TRACKING_PATHS[cat]["progress"]
+current_prompt = prompt_df.loc[prompt_df["F1"].idxmax(), "prompt"]
 
-    try:
-        tracking_df = pd.read_excel(tracking_progress_file)
-        tracking_records = tracking_df.to_dict("records")
-        print(f"Found existing {cat} tracking progress: {len(tracking_df)} rows")
-    except FileNotFoundError:
-        tracking_df = pd.DataFrame()
-        tracking_records = []
-        print(f"No existing {cat} tracking progress file found")
+for generation in range(NUM_GENERATIONS):
+    generation_num = generation + 1
+    print(f"\n=== Generation {generation_num} ===")
 
-    current_prompt = prompt_df.loc[index, "prompt"]
+    if not tracking_df.empty:
+        generation_tracking = tracking_df[
+            tracking_df["generation"] == generation_num
+        ].copy()
+    else:
+        generation_tracking = pd.DataFrame()
 
-    for generation in range(NUM_GENERATIONS):
-        generation_num = generation + 1
-        print(f"\n=== Generation {generation_num} ===")
+    if len(generation_tracking) == NUM_VARIANTS:
+        best_row = generation_tracking.loc[
+            generation_tracking["f1_score"].idxmax()
+        ]
+        current_prompt = best_row["prompt"].replace("\n" + prompt_formatting_description, "")
+        print(f"Generation {generation_num} already completed; skipping")
+        continue
 
-        if not tracking_df.empty:
-            generation_tracking = tracking_df[
-                tracking_df["generation"] == generation_num
-            ].copy()
-        else:
-            generation_tracking = pd.DataFrame()
+    variants = classify.generate_prompt_variants(
+        model_provider=PLATFORM,
+        base_prompt=current_prompt,
+        metaprompt1=META_INSTRUCTIONS1,
+        metaprompt2=META_INSTRUCTIONS2,
+        num_variants=NUM_VARIANTS,
+    )
 
-        if len(generation_tracking) == NUM_VARIANTS:
-            best_row = generation_tracking.loc[
-                generation_tracking["f1_score"].idxmax()
-            ]
-            current_prompt = best_row["prompt"].replace("\n" + prompt_formatting_description, "")
-            print(f"Generation {generation_num} already completed; skipping")
-            continue
+    variant_scores = []
 
-        variants = classify.generate_prompt_variants(
-            model_provider=PLATFORM,
-            base_prompt=current_prompt,
-            metaprompt1=META_INSTRUCTIONS1,
-            metaprompt2=META_INSTRUCTIONS2,
-            num_variants=NUM_VARIANTS,
+    for i, variant in enumerate(variants):
+        print(f"Evaluating variant {i + 1}...")
+        prompt_id = f"gen{generation_num}_var{i + 1}"
+
+        rows = classify.get_classifications_from_prompt(
+            prompt_text=variant + "\n" + prompt_formatting_description,
+            prompt_id=prompt_id,
+            df=df[["unique_text_id", "text"]].copy(),
+            platform=PLATFORM,
+            temperature=TEMPERATURE,
         )
 
-        variant_scores = []
+        for response_row in rows:
+            response_row["generation"] = generation_num
+            response_row["variant_id"] = i + 1
 
-        for i, variant in enumerate(variants):
-            print(f"Evaluating variant {i + 1}...")
-            prompt_id = f"{cat}_gen{generation_num}_var{i + 1}"
+        all_response_rows.extend(rows)
 
-            rows = classify.get_classifications_from_prompt(
-                prompt_text=variant + "\n" + prompt_formatting_description,
-                prompt_id=prompt_id,
-                df=df[["unique_text_id", "text"]].copy(),
-                platform=PLATFORM,
-                temperature=TEMPERATURE,
-            )
+        rows_df = pd.DataFrame(rows)
+        scored_df = rows_df.merge(df_gold, on="unique_text_id", how="inner")
 
-            for response_row in rows:
-                response_row["category"] = cat
-                response_row["generation"] = generation_num
-                response_row["variant_id"] = i + 1
+        scorable_rows = scored_df["classification"].notna() & scored_df["human_code"].notna()
+        y_true = scored_df.loc[scorable_rows, "human_code"]
+        y_pred = scored_df.loc[scorable_rows, "classification"]
 
-            all_response_rows.extend(rows)
+        if len(y_true) == 0:
+            f1 = float("nan")
+        else:
+            f1 = f1_score(y_true, y_pred, zero_division=0)
 
-            rows_df = pd.DataFrame(rows)
-            scored_df = rows_df.merge(df_gold, on="unique_text_id", how="inner")
+        print(f"Variant F1: {f1:.4f}")
+        variant_scores.append((variant, f1))
 
-            scorable_rows = scored_df["classification"].notna() & scored_df["human_code"].notna()
-            y_true = scored_df.loc[scorable_rows, "human_code"]
-            y_pred = scored_df.loc[scorable_rows, "classification"]
+        tracking_records.append(
+            {
+                "generation": generation_num,
+                "variant_id": i + 1,
+                "prompt_id": prompt_id,
+                "prompt": variant + "\n" + prompt_formatting_description,
+                "f1_score": f1,
+            }
+        )
 
-            if len(y_true) == 0:
-                f1 = float("nan")
-            else:
-                f1 = f1_score(y_true, y_pred, zero_division=0)
-
-            print(f"Variant F1: {f1:.4f}")
-            variant_scores.append((variant, f1))
-
-            tracking_records.append(
-                {
-                    "generation": generation_num,
-                    "variant_id": i + 1,
-                    "prompt_id": prompt_id,
-                    "prompt": variant + "\n" + prompt_formatting_description,
-                    "f1_score": f1,
-                }
-            )
-
-        best_variant, best_f1 = max(variant_scores, key=lambda x: x[1])
-        print(f"Best variant selected with F1 {best_f1:.4f}")
-        current_prompt = best_variant
-
-        tracking_df = pd.DataFrame(tracking_records)
-
-        pd.DataFrame(all_response_rows).to_excel(TEMP_RESPONSE_PATH, index=False)
-        tracking_df.to_excel(tracking_progress_file, index=False)
-        print(f"Saved progress after {cat} generation {generation_num}")
+    best_variant, best_f1 = max(variant_scores, key=lambda x: x[1])
+    print(f"Best variant selected with F1 {best_f1:.4f}")
+    current_prompt = best_variant
 
     tracking_df = pd.DataFrame(tracking_records)
-    tracking_df.to_excel(output_tracking_file, index=False)
+
+    pd.DataFrame(all_response_rows).to_excel(TEMP_RESPONSE_PATH, index=False)
+    tracking_df.to_excel(TRACKING_PROGRESS_PATH, index=False)
+    print(f"Saved progress after generation {generation_num}")
+
+tracking_df = pd.DataFrame(tracking_records)
+tracking_df.to_excel(TRACKING_PATH, index=False)
+print(f"Saved: {TRACKING_PATH}")
 
 # %%
 # ------------------ SAVE ALL RESPONSES ------------------
@@ -235,7 +215,7 @@ scored_df = long_df.merge(df_gold, on="unique_text_id", how="inner")
 classify.export_results_to_excel(
     df=scored_df,
     output_path=EXPORT_RESULTS_PATH,
-    group_col=["prompt_id", "category", "generation", "variant_id"],
+    group_col=["prompt_id", "generation", "variant_id"],
     prompt_col="prompt",
     y_true_col="human_code",
     y_pred_col="classification",
@@ -246,29 +226,28 @@ print(f"Saved: {EXPORT_RESULTS_PATH}")
 
 # %%
 # ------------------ PLOT RESULTS ------------------
-for cat, _ in prompts:
-    tracking_df = pd.read_excel(TRACKING_PATHS[cat]["csv"])
-    tracking_df["generation"] = tracking_df["generation"].astype(int)
-    tracking_df["f1_score"] = tracking_df["f1_score"].astype(float)
+tracking_df = pd.read_excel(TRACKING_PATH)
+tracking_df["generation"] = tracking_df["generation"].astype(int)
+tracking_df["f1_score"] = tracking_df["f1_score"].astype(float)
 
-    plt.figure(figsize=(10, 6))
-    plt.scatter(
-        tracking_df["generation"],
-        tracking_df["f1_score"],
-        color="black",
-        alpha=0.7,
-    )
-    plt.plot(
-        tracking_df.groupby("generation")["f1_score"].max(),
-        marker="o",
-        linestyle="-",
-        color="black",
-    )
-    plt.xlabel("Generation")
-    plt.ylabel("F1 Score")
-    plt.title(f"Prompt F1 Scores Across Generations - {cat.title()} Seed")
-    plt.grid(True, linestyle="--", color="gray", alpha=0.7)
-    plt.tight_layout()
-    plt.savefig(TRACKING_PATHS[cat]["fig"])
-    plt.show()
-    print(f"Saved: {TRACKING_PATHS[cat]['fig']}")
+plt.figure(figsize=(10, 6))
+plt.scatter(
+    tracking_df["generation"],
+    tracking_df["f1_score"],
+    color="black",
+    alpha=0.7,
+)
+plt.plot(
+    tracking_df.groupby("generation")["f1_score"].max(),
+    marker="o",
+    linestyle="-",
+    color="black",
+)
+plt.xlabel("Generation")
+plt.ylabel("F1 Score")
+plt.title("Prompt F1 Scores Across Generations")
+plt.grid(True, linestyle="--", color="gray", alpha=0.7)
+plt.tight_layout()
+plt.savefig(FIGURE_PATH)
+plt.show()
+print(f"Saved: {FIGURE_PATH}")

@@ -64,10 +64,9 @@ if SAMPLE:
     df_eval = df_eval.sample(5, random_state=SEED).copy()
 
 # %%
-# ------------------ LOAD TOP AND BOTTOM PROMPTS ------------------
+# ------------------ LOAD APE PROMPT ------------------
 results_df = pd.read_excel(IMPORT_RESULTS_PATH, sheet_name="results")
-top_prompt = results_df.loc[results_df["F1"].idxmax(), "prompt"]
-bottom_prompt = results_df.loc[results_df["F1"].idxmin(), "prompt"]
+ape_prompt = results_df.loc[results_df["F1"].idxmax(), "prompt"]
 
 # %%
 # ------------------ LOAD FEWSHOT SAMPLES ------------------
@@ -91,10 +90,10 @@ if RUN_CLASSIFICATIONS:
         completed_prompt_ids = set()
         print("No existing progress file found")
 
-    prompt_dict = {
-        "top": top_prompt,
-        "bottom": bottom_prompt,
-    }
+    if "{TEXT}" not in ape_prompt:
+        raise ValueError("ape_prompt must contain {TEXT}")
+    if "Here is the text:" not in ape_prompt:
+        raise ValueError('ape_prompt must contain the phrase "Here is the text:"')
 
     counter = 0
 
@@ -109,44 +108,36 @@ if RUN_CLASSIFICATIONS:
             ]
         )
 
-        for category, base_prompt in prompt_dict.items():
-            if "{TEXT}" not in base_prompt:
-                raise ValueError("base_prompt must contain {TEXT}")
+        prompt_id = f"fewshot_{sample_id}_n{num_examples}"
 
-            if "Here is the text:" not in base_prompt:
-                raise ValueError('base_prompt must contain the phrase "Here is the text:"')
+        if prompt_id in completed_prompt_ids:
+            continue
 
-            prompt_id = f"{category}_fewshot_{sample_id}_n{num_examples}"
+        fewshot_prompt = ape_prompt.replace(
+            "Here is the text:",
+            f"Here are some examples:\n{example_block}\n\nHere is the text:",
+        )
 
-            if prompt_id in completed_prompt_ids:
-                continue
+        rows = classify.get_classifications_from_prompt(
+            prompt_text=fewshot_prompt,
+            prompt_id=prompt_id,
+            df=df_eval[["unique_text_id", "text"]].copy(),
+            platform=PLATFORM,
+            temperature=TEMPERATURE,
+        )
 
-            fewshot_prompt = base_prompt.replace(
-                "Here is the text:",
-                f"Here are some examples:\n{example_block}\n\nHere is the text:",
-            )
+        for response_row in rows:
+            response_row["num_examples"] = num_examples
+            response_row["sample_id"] = sample_id
 
-            rows = classify.get_classifications_from_prompt(
-                prompt_text=fewshot_prompt,
-                prompt_id=prompt_id,
-                df=df_eval[["unique_text_id", "text"]].copy(),
-                platform=PLATFORM,
-                temperature=TEMPERATURE,
-            )
+        response_rows.extend(rows)
+        completed_prompt_ids.add(prompt_id)
 
-            for response_row in rows:
-                response_row["category"] = category
-                response_row["num_examples"] = num_examples
-                response_row["sample_id"] = sample_id
+        counter += 1
 
-            response_rows.extend(rows)
-            completed_prompt_ids.add(prompt_id)
-
-            counter += 1
-
-            if counter % SAVE_EVERY == 0:
-                pd.DataFrame(response_rows).to_excel(TEMP_RESPONSE_PATH, index=False)
-                print(f"Saved progress after {counter} new prompts")
+        if counter % SAVE_EVERY == 0:
+            pd.DataFrame(response_rows).to_excel(TEMP_RESPONSE_PATH, index=False)
+            print(f"Saved progress after {counter} new prompts")
 
     long_df = pd.DataFrame(response_rows)
     long_df.to_excel(TEMP_RESPONSE_PATH, index=False)
@@ -162,7 +153,7 @@ scored_df = long_df.merge(df_gold, on="unique_text_id", how="inner")
 classify.export_results_to_excel(
     df=scored_df,
     output_path=EXPORT_RESULTS_PATH,
-    group_col=["prompt_id", "category", "num_examples", "sample_id"],
+    group_col=["prompt_id", "num_examples", "sample_id"],
     prompt_col="prompt",
     y_true_col="human_code",
     y_pred_col="classification",
