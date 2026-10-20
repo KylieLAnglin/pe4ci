@@ -13,7 +13,7 @@ N_BOOTSTRAPS = 1000
 RANDOM_STATE = 12
 
 RESPONSE_PATH = start.DATA_DIR + f"responses_test/{PLATFORM}_{CONCEPT}_best_responses_test.xlsx"
-TEXT_PATH = start.DATA_DIR + f"clean/{CONCEPT}_coding_final.xlsx"
+TEXT_PATH = start.DATA_DIR + f"clean/{CONCEPT}_final.xlsx"
 EXPORT_RESULTS_PATH = start.RESULTS_DIR + f"{PLATFORM}_{CONCEPT}_test_results.xlsx"
 EXPORT_MISCLASSIFIED_PATH = start.RESULTS_DIR + f"{PLATFORM}_{CONCEPT}_misclassified_test.xlsx"
 
@@ -32,7 +32,7 @@ scored_df = response_df.dropna(subset=["human_code", "classification"]).copy()
 
 human_codes = scored_df["human_code"]
 classifications = scored_df["classification"]
-participant_ids = scored_df["unique_text_id"].str.rsplit("_", n=1).str[0]
+participant_ids = scored_df["participant_id"]
 
 # %%
 # ------------------ ESTIMATE METRICS WITH 95% CONFIDENCE INTERVALS ------------------

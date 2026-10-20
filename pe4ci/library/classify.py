@@ -222,7 +222,7 @@ def export_results_to_excel(
         result_row += [accuracy, precision, recall, f1]
 
         if include_se:
-            participant_ids = prompt_responses["unique_text_id"].str.rsplit("_", n=1).str[0]
+            participant_ids = prompt_responses["participant_id"]
             accuracy_se = metric_standard_errors.bootstrap_accuracy(
                 y_true, y_pred, participant_ids, n_bootstraps, random_state
             )

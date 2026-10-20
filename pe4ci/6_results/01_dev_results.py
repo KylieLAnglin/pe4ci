@@ -39,7 +39,7 @@ TECHNIQUE_GROUP_COLUMNS = {
 # %%
 # ------------------ LOAD GOLD CODES ------------------
 df_gold = pd.read_excel(GOLD_PATH)
-df_gold = df_gold[["unique_text_id", "human_code"]].copy()
+df_gold = df_gold[["unique_text_id", "participant_id", "human_code"]].copy()
 
 # %%
 # ------------------ ESTIMATE RESULTS FOR EACH TECHNIQUE ------------------
@@ -62,7 +62,7 @@ for technique_name, group_col in TECHNIQUE_GROUP_COLUMNS.items():
     for group_values, prompt_group in scored_df.groupby(group_col, dropna=False):
         human_codes = prompt_group["human_code"]
         classifications = prompt_group["classification"]
-        participant_ids = prompt_group["unique_text_id"].str.rsplit("_", n=1).str[0]
+        participant_ids = prompt_group["participant_id"]
 
         result_row = {"technique": technique_name}
 

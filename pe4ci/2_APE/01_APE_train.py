@@ -72,7 +72,7 @@ if SAMPLE:
     df = df.sample(5, random_state=SEED).copy()
 
 df_gold = pd.read_excel(GOLD_PATH)
-df_gold = df_gold[["unique_text_id", "human_code"]].copy()
+df_gold = df_gold[["unique_text_id", "participant_id", "human_code"]].copy()
 
 prompt_df = pd.read_excel(IMPORT_RESULTS_PATH, sheet_name="results")
 

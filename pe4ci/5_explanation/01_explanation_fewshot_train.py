@@ -39,7 +39,7 @@ EXPORT_RESULTS_PATH = start.MAIN_DIR + f"results/{PLATFORM}_{CONCEPT}_explanatio
 df = pd.read_excel(DATA_PATH)
 df = df[df["split_group"] == "train"].copy()
 
-df_gold = pd.read_excel(GOLD_PATH)[["unique_text_id", "human_code"]]
+df_gold = pd.read_excel(GOLD_PATH)[["unique_text_id", "participant_id", "human_code"]]
 
 df_eval = df[df["train_use"] == "eval"].copy()
 

@@ -28,7 +28,7 @@ df = pd.read_excel(DATA_PATH)
 df = df[df["split_group"] == "test"].copy()
 
 df_gold = pd.read_excel(GOLD_PATH)
-df_gold = df_gold[["unique_text_id", "human_code"]].copy()
+df_gold = df_gold[["unique_text_id", "participant_id", "human_code"]].copy()
 
 # %%
 # ------------------ EVALUATE BEST PROMPT ON TEST SET ------------------
