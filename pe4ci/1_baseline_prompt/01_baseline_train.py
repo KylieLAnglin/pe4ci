@@ -25,6 +25,8 @@ RESPONSE_PATH = (
     start.DATA_DIR
     + f"responses_train/{PLATFORM}_{CONCEPT}_baseline_zero_responses_train.xlsx"
 )
+
+# just in case interrupted
 TEMP_RESPONSE_PATH = (
     start.DATA_DIR
     + f"responses_train/{PLATFORM}_{CONCEPT}_baseline_zero_responses_train_PROGRESS{RUN_TAG}.xlsx"
@@ -99,6 +101,7 @@ for i, row in enumerate(
 
     response_rows.extend(responses)
 
+    # save progress 
     if i % SAVE_EVERY == 0:
         pd.DataFrame(response_rows).to_excel(TEMP_RESPONSE_PATH, index=False)
         print(f"Saved progress after {i} new prompts")

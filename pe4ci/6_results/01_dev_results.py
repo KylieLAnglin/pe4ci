@@ -54,7 +54,7 @@ TECHNIQUE_CONFIGS = {
 }
 
 # %%
-# ------------------ COMPUTE AND EXPORT RESULTS ------------------
+# ------------------ ESTIMATE AND EXPORT RESULTS ------------------
 for concept in CONCEPTS:
     gold_path = start.DATA_DIR + f"clean/{concept}_coding_final.xlsx"
 
@@ -101,9 +101,9 @@ for concept in CONCEPTS:
                 recall = recall_score(human_codes, classifications, zero_division=0)
                 f1 = f1_score(human_codes, classifications, zero_division=0)
 
-                _, acc_se = metric_standard_errors.bootstrap_accuracy(human_codes, classifications, participant_ids, N_BOOTSTRAPS, RANDOM_STATE)
-                _, prec_se = metric_standard_errors.bootstrap_precision(human_codes, classifications, participant_ids, N_BOOTSTRAPS, RANDOM_STATE)
-                _, rec_se = metric_standard_errors.bootstrap_recall(human_codes, classifications, participant_ids, N_BOOTSTRAPS, RANDOM_STATE)
+                acc_se = metric_standard_errors.bootstrap_accuracy(human_codes, classifications, participant_ids, N_BOOTSTRAPS, RANDOM_STATE)
+                prec_se = metric_standard_errors.bootstrap_precision(human_codes, classifications, participant_ids, N_BOOTSTRAPS, RANDOM_STATE)
+                rec_se = metric_standard_errors.bootstrap_recall(human_codes, classifications, participant_ids, N_BOOTSTRAPS, RANDOM_STATE)
                 _, f1_se = metric_standard_errors.bootstrap_f1(human_codes, classifications, participant_ids, N_BOOTSTRAPS, RANDOM_STATE)
 
                 result_row = {"technique": technique_name}
@@ -111,14 +111,14 @@ for concept in CONCEPTS:
                 for column_name, column_value in zip(group_col, group_values_list):
                     result_row[column_name] = column_value
 
-                result_row["Accuracy"] = round(accuracy, 3)
-                result_row["Precision"] = round(precision, 3)
-                result_row["Recall"] = round(recall, 3)
-                result_row["F1"] = round(f1, 3)
-                result_row["Accuracy SE"] = round(acc_se, 3)
-                result_row["Precision SE"] = round(prec_se, 3)
-                result_row["Recall SE"] = round(rec_se, 3)
-                result_row["F1 SE"] = round(f1_se, 3)
+                result_row["Accuracy"] = accuracy
+                result_row["Precision"] = precision
+                result_row["Recall"] = recall
+                result_row["F1"] = f1
+                result_row["Accuracy SE"] = acc_se
+                result_row["Precision SE"] = prec_se
+                result_row["Recall SE"] = rec_se
+                result_row["F1 SE"] = f1_se
                 result_row["prompt"] = prompt_group["prompt"].iloc[0]
 
                 technique_rows.append(result_row)

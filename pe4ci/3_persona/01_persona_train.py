@@ -98,9 +98,9 @@ for row in tqdm(
         temperature=TEMPERATURE,
     )
 
-    for r in rows:
-        r["category"] = row.category
-        r["persona"] = row.persona
+    for response_row in rows:
+        response_row["category"] = row.category
+        response_row["persona"] = row.persona
 
     response_rows.extend(rows)
 

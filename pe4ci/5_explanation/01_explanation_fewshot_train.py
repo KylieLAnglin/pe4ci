@@ -159,25 +159,31 @@ for combo in product([1, 2], repeat=len(bottom_examples_expl_df)):
 
 # %%
 # ------------------ SELECT FIXED + RANDOM COMBINATIONS ------------------
-all_ones_top = next(v for v in top_expl_variants_all if set(v["combination"]) == {"1"})
-all_twos_top = next(v for v in top_expl_variants_all if set(v["combination"]) == {"2"})
-rest_top = [v for v in top_expl_variants_all if v not in [all_ones_top, all_twos_top]]
-top_expl_variants = [all_ones_top, all_twos_top] + random.sample(
-    rest_top, min(NUM_SAMPLE_VARIANTS, len(rest_top))
-)
+top_all_ones = "1" * len(top_examples_expl_df)
+top_all_twos = "2" * len(top_examples_expl_df)
 
-all_ones_bottom = next(
-    v for v in bottom_expl_variants_all if set(v["combination"]) == {"1"}
-)
-all_twos_bottom = next(
-    v for v in bottom_expl_variants_all if set(v["combination"]) == {"2"}
-)
-rest_bottom = [
-    v for v in bottom_expl_variants_all if v not in [all_ones_bottom, all_twos_bottom]
-]
-bottom_expl_variants = [all_ones_bottom, all_twos_bottom] + random.sample(
-    rest_bottom, min(NUM_SAMPLE_VARIANTS, len(rest_bottom))
-)
+top_fixed_variants = []
+top_remaining_variants = []
+for variant in top_expl_variants_all:
+    if variant["combination"] in [top_all_ones, top_all_twos]:
+        top_fixed_variants.append(variant)
+    else:
+        top_remaining_variants.append(variant)
+
+top_expl_variants = top_fixed_variants + random.sample(top_remaining_variants, NUM_SAMPLE_VARIANTS)
+
+bottom_all_ones = "1" * len(bottom_examples_expl_df)
+bottom_all_twos = "2" * len(bottom_examples_expl_df)
+
+bottom_fixed_variants = []
+bottom_remaining_variants = []
+for variant in bottom_expl_variants_all:
+    if variant["combination"] in [bottom_all_ones, bottom_all_twos]:
+        bottom_fixed_variants.append(variant)
+    else:
+        bottom_remaining_variants.append(variant)
+
+bottom_expl_variants = bottom_fixed_variants + random.sample(bottom_remaining_variants, NUM_SAMPLE_VARIANTS)
 
 if SAMPLE:
     top_expl_variants = top_expl_variants[:5]

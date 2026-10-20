@@ -3,6 +3,7 @@ import math
 import os
 import pandas as pd
 from openpyxl import load_workbook, Workbook
+from openpyxl.styles import Font
 
 from crisp.library import start
 
@@ -10,6 +11,15 @@ from crisp.library import start
 # ------------------ SETUP ------------------
 CONCEPTS = ["gratitude", "ncb", "mm"]
 PLATFORMS = ["openai", "llama3.3"]
+
+TABLE_NUMBERS = {
+    ("openai", "gratitude"): 3,
+    ("llama3.3", "gratitude"): 4,
+    ("openai", "mm"): 5,
+    ("llama3.3", "mm"): 6,
+    ("openai", "ncb"): 7,
+    ("llama3.3", "ncb"): 8,
+}
 
 TECHNIQUES = ["Baseline", "APE", "Persona", "Chain-of-Thought", "Explanations"]
 
@@ -65,7 +75,8 @@ def get_best_row_for_category(technique_df, category):
 for concept in CONCEPTS:
     for platform in PLATFORMS:
         dev_results_path = start.RESULTS_DIR + f"{platform}_{concept}_dev_results.xlsx"
-        output_path = start.RESULTS_DIR + f"dev_table_{platform}_{concept}.xlsx"
+        table_number = TABLE_NUMBERS[(platform, concept)]
+        output_path = start.RESULTS_DIR + f"table{table_number}_dev_table_{platform}_{concept}.xlsx"
 
         if not os.path.exists(dev_results_path):
             print(f"Skipping {platform} - {concept}: {dev_results_path} not found")
@@ -109,6 +120,17 @@ for concept in CONCEPTS:
                     "F1 SE": best_row["F1 SE"],
                 }
 
+        top_f1 = baseline_reference["top"]["F1"]
+        bottom_f1 = baseline_reference["bottom"]["F1"]
+        pooled_se = math.sqrt(baseline_reference["top"]["F1 SE"] ** 2 + baseline_reference["bottom"]["F1 SE"] ** 2)
+        z_score = abs(top_f1 - bottom_f1) / pooled_se
+        p_value = math.erfc(z_score / math.sqrt(2))
+        print(
+            f"{platform} - {concept}: top zero-shot ({top_f1:.2f}) vs bottom zero-shot ({bottom_f1:.2f}), "
+            f"z = {z_score:.2f}, p = {p_value:.4f}"
+        )
+
+        f1_cells = []
         for strategy in ["Zero-Shot", "Few-Shot"]:
             for category in ["top", "bottom"]:
                 excel_column = COLUMN_MAP[category][strategy]
@@ -144,17 +166,22 @@ for concept in CONCEPTS:
                         pooled_se = math.sqrt(f1_se**2 + base_se**2)
                         z_score = abs(f1 - base_f1) / pooled_se if pooled_se > 0 else 0
 
-                        if z_score > 2.58:
+                        if z_score > 3.29:
                             significance_stars = "***"
-                        elif z_score > 1.96:
+                        elif z_score > 2.58:
                             significance_stars = "**"
-                        elif z_score > 1.64:
+                        elif z_score > 1.96:
                             significance_stars = "*"
 
-                    ws.cell(row=excel_row, column=excel_column, value=f"{f1:.2f}{significance_stars}")
+                    f1_cell = ws.cell(row=excel_row, column=excel_column, value=f"{f1:.2f}{significance_stars}")
+                    f1_cells.append((f1_cell, round(f1, 2)))
                     ws.cell(row=excel_row + 1, column=excel_column, value=f"({f1_se:.2f})")
 
                     excel_row += 2
+
+        best_f1 = max(rounded_f1 for f1_cell, rounded_f1 in f1_cells)
+        for f1_cell, rounded_f1 in f1_cells:
+            f1_cell.font = Font(bold=(rounded_f1 == best_f1))
 
         wb.save(output_path)
         print(f"Saved: {output_path}")

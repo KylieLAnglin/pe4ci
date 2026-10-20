@@ -19,7 +19,7 @@ RESPONSES_DIR = start.DATA_DIR + "responses_test/"
 RESULTS_DIR = start.RESULTS_DIR
 
 # %%
-# ------------------ COMPUTE AND EXPORT TEST METRICS ------------------
+# ------------------ ESTIMATE AND EXPORT TEST METRICS ------------------
 misclassified_sheets = {}
 
 for concept in CONCEPTS:
@@ -58,24 +58,24 @@ for concept in CONCEPTS:
         for column_name, column_value in zip(group_col, list(group_values)):
             result_row[column_name] = column_value
 
-        result_row["Accuracy"] = round(accuracy, 3)
-        result_row["Precision"] = round(precision, 3)
-        result_row["Recall"] = round(recall, 3)
-        result_row["F1"] = round(f1, 3)
-        result_row["Specificity"] = round(specificity, 3)
-        result_row["NN Rate"] = round(nn_rate, 3)
-        result_row["Accuracy CI Lower"] = round(acc_ci_lower, 3)
-        result_row["Accuracy CI Upper"] = round(acc_ci_upper, 3)
-        result_row["Precision CI Lower"] = round(prec_ci_lower, 3)
-        result_row["Precision CI Upper"] = round(prec_ci_upper, 3)
-        result_row["Recall CI Lower"] = round(rec_ci_lower, 3)
-        result_row["Recall CI Upper"] = round(rec_ci_upper, 3)
-        result_row["F1 CI Lower"] = round(f1_ci_lower, 3)
-        result_row["F1 CI Upper"] = round(f1_ci_upper, 3)
-        result_row["Specificity CI Lower"] = round(spec_ci_lower, 3)
-        result_row["Specificity CI Upper"] = round(spec_ci_upper, 3)
-        result_row["NN Rate CI Lower"] = round(nn_ci_lower, 3)
-        result_row["NN Rate CI Upper"] = round(nn_ci_upper, 3)
+        result_row["Accuracy"] = accuracy
+        result_row["Precision"] = precision
+        result_row["Recall"] = recall
+        result_row["F1"] = f1
+        result_row["Specificity"] = specificity
+        result_row["NN Rate"] = nn_rate
+        result_row["Accuracy CI Lower"] = acc_ci_lower
+        result_row["Accuracy CI Upper"] = acc_ci_upper
+        result_row["Precision CI Lower"] = prec_ci_lower
+        result_row["Precision CI Upper"] = prec_ci_upper
+        result_row["Recall CI Lower"] = rec_ci_lower
+        result_row["Recall CI Upper"] = rec_ci_upper
+        result_row["F1 CI Lower"] = f1_ci_lower
+        result_row["F1 CI Upper"] = f1_ci_upper
+        result_row["Specificity CI Lower"] = spec_ci_lower
+        result_row["Specificity CI Upper"] = spec_ci_upper
+        result_row["NN Rate CI Lower"] = nn_ci_lower
+        result_row["NN Rate CI Upper"] = nn_ci_upper
         result_row["prompt"] = prompt_group["prompt"].iloc[0]
 
         metric_rows.append(result_row)

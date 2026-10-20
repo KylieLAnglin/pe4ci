@@ -134,8 +134,8 @@ for row in tqdm(
         temperature=TEMPERATURE,
     )
 
-    for r in rows:
-        r["category"] = row.category
+    for response_row in rows:
+        response_row["category"] = row.category
 
     response_rows.extend(rows)
 

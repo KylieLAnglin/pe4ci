@@ -26,13 +26,18 @@ META_INSTRUCTIONS1 = (
 )
 META_INSTRUCTIONS2 = "\nOutput only the new instruction."
 
-PROMPT_ADDENDUM = """Here is the text:
+PROMPT_FORMATTING_DESCRIPTION = """Here is the text:
 {TEXT}
 Remember, report your final classification as either ```yes``` or ```no``` surrounded by triple backticks."""
 
-ALTERNATIVE_ADDENDUM = """Here is the text:
+ALTERNATIVE_PROMPT_FORMATTING_DESCRIPTION = """Here is the text:
 {TEXT}
 Respond only ```yes``` or ```no``` surrounded by triple backticks."""
+
+if PLATFORM.startswith("llama"):
+    prompt_formatting_description = ALTERNATIVE_PROMPT_FORMATTING_DESCRIPTION
+else:
+    prompt_formatting_description = PROMPT_FORMATTING_DESCRIPTION
 
 print(f"Running {CONCEPT} on {PLATFORM} with {MODEL} in train set")
 
@@ -81,16 +86,17 @@ df_gold = df_gold[["unique_text_id", "human_code"]].copy()
 prompt_df = pd.read_excel(IMPORT_RESULTS_PATH, sheet_name="results")
 
 # %%
-# ------------------ STRIP PROMPT ADDENDUM ------------------
+# ------------------ STRIP PROMPT FORMATTING DESCRIPTION ------------------
+# remove prompt ending because will add later after getting ape prompts
+# (can't guarantee that ape will keep the ending in the same format)
 original_prompts = prompt_df["prompt"].copy()
 prompt_df["prompt"] = prompt_df["prompt"].str.replace(
-    PROMPT_ADDENDUM, "", regex=False
+    prompt_formatting_description, "", regex=False
 )
 
 if (original_prompts == prompt_df["prompt"]).all():
     raise ValueError(
-        "PROMPT_ADDENDUM removal failed - no replacements were made. "
-        "Check PROMPT_ADDENDUM format."
+        "Prompt ending needs to match prompt_formatting_description."
     )
 
 # %%
@@ -99,11 +105,6 @@ prompts = [
     ("top", prompt_df["F1"].idxmax()),
     ("bottom", prompt_df["F1"].idxmin()),
 ]
-
-if start.PLATFORM.startswith("llama"):
-    addendum = ALTERNATIVE_ADDENDUM
-else:
-    addendum = PROMPT_ADDENDUM
 
 # ------------------ RESUME RESPONSES ------------------
 try:
@@ -147,7 +148,7 @@ for cat, index in prompts:
             best_row = generation_tracking.loc[
                 generation_tracking["f1_score"].idxmax()
             ]
-            current_prompt = best_row["prompt"].replace("\n" + addendum, "")
+            current_prompt = best_row["prompt"].replace("\n" + prompt_formatting_description, "")
             print(f"Generation {generation_num} already completed; skipping")
             continue
 
@@ -166,7 +167,7 @@ for cat, index in prompts:
             prompt_id = f"{cat}_gen{generation_num}_var{i + 1}"
 
             rows = classify.get_classifications_from_prompt(
-                prompt_text=variant + "\n" + addendum,
+                prompt_text=variant + "\n" + prompt_formatting_description,
                 prompt_id=prompt_id,
                 df=df[["unique_text_id", "text"]].copy(),
                 platform=PLATFORM,
@@ -183,9 +184,9 @@ for cat, index in prompts:
             rows_df = pd.DataFrame(rows)
             scored_df = rows_df.merge(df_gold, on="unique_text_id", how="inner")
 
-            mask = scored_df["classification"].notna() & scored_df["human_code"].notna()
-            y_true = scored_df.loc[mask, "human_code"]
-            y_pred = scored_df.loc[mask, "classification"]
+            scorable_rows = scored_df["classification"].notna() & scored_df["human_code"].notna()
+            y_true = scored_df.loc[scorable_rows, "human_code"]
+            y_pred = scored_df.loc[scorable_rows, "classification"]
 
             if len(y_true) == 0:
                 f1 = float("nan")
@@ -200,7 +201,7 @@ for cat, index in prompts:
                     "generation": generation_num,
                     "variant_id": i + 1,
                     "prompt_id": prompt_id,
-                    "prompt": variant + "\n" + addendum,
+                    "prompt": variant + "\n" + prompt_formatting_description,
                     "f1_score": f1,
                 }
             )

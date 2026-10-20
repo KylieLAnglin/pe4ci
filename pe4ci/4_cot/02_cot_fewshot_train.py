@@ -136,15 +136,31 @@ for combo in product([1, 2], repeat=len(bottom_df)):
 
 # %%
 # ------------------ SELECT VARIANTS ------------------
-top_all_ones = next(v for v in top_variants_all if set(v["combination"]) == {"1"})
-top_all_twos = next(v for v in top_variants_all if set(v["combination"]) == {"2"})
-top_remaining = [v for v in top_variants_all if v not in [top_all_ones, top_all_twos]]
-top_variants = [top_all_ones, top_all_twos] + random.sample(top_remaining, min(NUM_SAMPLE_VARIANTS, len(top_remaining)))
+top_all_ones = "1" * len(top_df)
+top_all_twos = "2" * len(top_df)
 
-bottom_all_ones = next(v for v in bottom_variants_all if set(v["combination"]) == {"1"})
-bottom_all_twos = next(v for v in bottom_variants_all if set(v["combination"]) == {"2"})
-bottom_remaining = [v for v in bottom_variants_all if v not in [bottom_all_ones, bottom_all_twos]]
-bottom_variants = [bottom_all_ones, bottom_all_twos] + random.sample(bottom_remaining, min(NUM_SAMPLE_VARIANTS, len(bottom_remaining)))
+top_fixed_variants = []
+top_remaining_variants = []
+for variant in top_variants_all:
+    if variant["combination"] in [top_all_ones, top_all_twos]:
+        top_fixed_variants.append(variant)
+    else:
+        top_remaining_variants.append(variant)
+
+top_variants = top_fixed_variants + random.sample(top_remaining_variants, NUM_SAMPLE_VARIANTS)
+
+bottom_all_ones = "1" * len(bottom_df)
+bottom_all_twos = "2" * len(bottom_df)
+
+bottom_fixed_variants = []
+bottom_remaining_variants = []
+for variant in bottom_variants_all:
+    if variant["combination"] in [bottom_all_ones, bottom_all_twos]:
+        bottom_fixed_variants.append(variant)
+    else:
+        bottom_remaining_variants.append(variant)
+
+bottom_variants = bottom_fixed_variants + random.sample(bottom_remaining_variants, NUM_SAMPLE_VARIANTS)
 
 # %%
 # ------------------ RESUME FROM PROGRESS FILE ------------------
@@ -176,9 +192,9 @@ for category, variants in [("top", top_variants), ("bottom", bottom_variants)]:
             temperature=TEMPERATURE,
         )
 
-        for r in rows:
-            r["category"] = category
-            r["combination"] = variant["combination"]
+        for response_row in rows:
+            response_row["category"] = category
+            response_row["combination"] = variant["combination"]
 
         response_rows.extend(rows)
         completed_prompt_ids.add(variant["prompt_id"])

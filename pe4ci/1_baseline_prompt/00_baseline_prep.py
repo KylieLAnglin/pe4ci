@@ -40,7 +40,7 @@ guidance_inclusion_probability = GUIDANCE_MEAN_TARGET / n_guidance_total
 sample_prompts = []
 seen_combinations = set()
 
-# Always include the most basic version first: all 0s, no guidance
+# Include the basic version first
 basic_context_part_num = 0
 basic_task_part_num = 0
 basic_defn_part_num = 0

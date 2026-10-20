@@ -32,7 +32,7 @@ def get_bottom_category_row(df, technique):
 ROW_LABELS_1 = {
     "top_zero_minus_bottom_zero": "Combinatorial Empirical Prompting (Zero-shot)",
     "ape_bottom_minus_bottom_zero": "Automatic Prompt Engineering (Zero-shot)",
-    "few_bottom_minus_bottom_zero": "Empirical Few-shot Prompting",
+    "few_bottom_minus_bottom_zero": "Combinatorial Empirical Few-shot Prompting",
     "persona_bottom_minus_bottom_zero": "Persona (Zero-shot)",
     "cot_bottom_minus_bottom_zero": "Chain-of-Thought (Zero-shot)",
 }
@@ -71,7 +71,7 @@ mean_df1 = plot_df1.groupby(["panel", "comparison", "label"], as_index=False)["d
 # %%
 # ------------------ PANEL 2: IMPROVE GOOD PROMPT ------------------
 ROW_LABELS_2 = {
-    "few_top_minus_top_zero": "Empirical Few-shot Prompting",
+    "few_top_minus_top_zero": "Combinatorial Empirical Few-shot Prompting",
     "ape_top_minus_top_zero": "Automatic Prompt Engineering (Zero-shot)",
     "persona_top_minus_top_zero": "Persona (Zero-shot)",
     "cot_top_minus_top_zero": "Chain-of-Thought (Zero-shot)",
@@ -154,9 +154,9 @@ fig, (ax1, ax2, ax3) = plt.subplots(
 )
 
 panels = [
-    (ax1, plot_df1, mean_df1, comparison_order_1, ROW_LABELS_1, "Impact of Technique on Worst-Performing Zero-Shot Prompt,\nas Estimated in Development Set"),
-    (ax2, plot_df2, mean_df2, comparison_order_2, ROW_LABELS_2, "Impact of Technique on Best-Performing Zero-Shot Prompt,\nas Estimated in Development Set"),
-    (ax3, plot_df3, mean_df3, comparison_order_3, ROW_LABELS_3, "Impact of Technique on Best-Performing Few-Shot Prompt,\nas Estimated in Development Set"),
+    (ax1, plot_df1, mean_df1, comparison_order_1, ROW_LABELS_1, "Impact of Technique on Bottom Zero-Shot Prompt,\nas Estimated in Development Set"),
+    (ax2, plot_df2, mean_df2, comparison_order_2, ROW_LABELS_2, "Impact of Technique on Top Zero-Shot Prompt,\nas Estimated in Development Set"),
+    (ax3, plot_df3, mean_df3, comparison_order_3, ROW_LABELS_3, "Impact of Technique on Top Few-Shot Prompt,\nas Estimated in Development Set"),
 ]
 
 for ax, plot_df, mean_df, comparison_order, row_labels, title in panels:
@@ -170,7 +170,7 @@ for ax, plot_df, mean_df, comparison_order, row_labels, title in panels:
             comparison_df["difference"],
             [y] * len(comparison_df),
             s=30,
-            facecolors="white",
+            facecolors=(0, 0, 0, 0.25),
             edgecolors="black",
             linewidths=1,
             zorder=2,
@@ -178,12 +178,12 @@ for ax, plot_df, mean_df, comparison_order, row_labels, title in panels:
 
         mean_difference = mean_df[mean_df["comparison"] == comparison]["mean_difference"].iloc[0]
 
-        ax.scatter(
-            mean_difference,
-            y,
-            s=110,
+        ax.plot(
+            [mean_difference, mean_difference],
+            [y - 0.25, y + 0.25],
             color="black",
-            zorder=3,
+            linewidth=2.5,
+            zorder=1,
         )
 
     ax.axvline(0, color="black", linewidth=1)

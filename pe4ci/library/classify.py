@@ -36,7 +36,7 @@ def get_model_response(model_provider, message_text, temperature=0.0001):
             reasoning={"effort": "none"},
         )
         cleaned_response = response.output_text.strip() if response.output_text else ""
-        return cleaned_response, "fingerprint n/a"
+        return cleaned_response
 
     elif model_provider.startswith("llama"):
         llm = OllamaLLM(
@@ -47,7 +47,7 @@ def get_model_response(model_provider, message_text, temperature=0.0001):
             seed=start.SEED,
         )
         response = llm.invoke(message_text)
-        return response, "fingerprint n/a"
+        return response
 
     else:
         raise ValueError(f"Unsupported model provider: {model_provider}")
@@ -57,28 +57,28 @@ def parse_binary_classification(response_text: str):
     """
     Parse a yes/no classification from the model response.
 
-    Priority:
-    1. Triple-backticked yes/no
-    2. Any backticked yes/no
-    3. Whole-word yes/no fallback
     """
     if pd.isna(response_text) or not str(response_text).strip():
         return np.nan
 
     text = str(response_text)
 
+    # best case: triple-backticked yes/no
     triple_matches = re.findall(r"`{3}\s*(yes|no)\s*`{3}", text, flags=re.IGNORECASE)
     if triple_matches:
         return 1 if triple_matches[-1].lower() == "yes" else 0
 
+    # second case: any backticked yes/no
     backtick_matches = re.findall(r"`+\s*(yes|no)\s*`+", text, flags=re.IGNORECASE)
     if backtick_matches:
         return 1 if backtick_matches[-1].lower() == "yes" else 0
 
+    # third case: whole-word yes/no
     word_matches = re.findall(r"\b(yes|no)\b", text, flags=re.IGNORECASE)
     if word_matches:
         return 1 if word_matches[-1].lower() == "yes" else 0
 
+    # Last case return nan
     return np.nan
 
 
@@ -108,7 +108,7 @@ def get_classifications_from_prompt(
     ):
         full_message = prompt_text.replace("{TEXT}", str(text))
 
-        cleaned_response, system_fingerprint = get_model_response(
+        cleaned_response = get_model_response(
             model_provider=platform,
             message_text=full_message,
             temperature=temperature,
@@ -123,7 +123,6 @@ def get_classifications_from_prompt(
                 "classification": classification,
                 "prompt": prompt_text,
                 "model": start.MODEL,
-                "fingerprint": system_fingerprint,
                 "prompt_id": prompt_id,
             }
         )
@@ -168,7 +167,7 @@ def generate_prompt_variants(
 def export_results_to_excel(
     df,
     output_path,
-    group_col="prompt_id",
+    group_col="prompt_id", # single column or list
     prompt_col="prompt",
     y_true_col="human_code",
     y_pred_col="classification",
@@ -186,6 +185,10 @@ def export_results_to_excel(
         del workbook[sheet_name]
     worksheet = workbook.create_sheet(sheet_name)
 
+
+    # Usually, we group responses by prompt id but for some prompting types we group 
+    # by multiple prompt descriptors just to store those descriptors
+    # e.g. APE: group_col=["prompt_id", "category", "generation", "variant_id"]
     if isinstance(group_col, str):
         group_col = [group_col]
 
@@ -197,13 +200,15 @@ def export_results_to_excel(
     for col_num, header in enumerate(headers, 1):
         worksheet.cell(row=1, column=col_num, value=header)
 
-    grouped = df.dropna(subset=[y_true_col, y_pred_col]).groupby(group_col)
+    responses_by_prompt = df.dropna(subset=[y_true_col, y_pred_col]).groupby(
+        group_col, dropna=False
+    )
 
     row = 2
-    for group_vals, group_df in grouped:
-        y_true = group_df[y_true_col]
-        y_pred = group_df[y_pred_col]
-        prompt_text = group_df[prompt_col].iloc[0]
+    for prompt_descriptors, prompt_responses in responses_by_prompt:
+        y_true = prompt_responses[y_true_col]
+        y_pred = prompt_responses[y_pred_col]
+        prompt_text = prompt_responses[prompt_col].iloc[0]
 
         accuracy = accuracy_score(y_true, y_pred)
         precision = precision_score(y_true, y_pred)
@@ -213,18 +218,18 @@ def export_results_to_excel(
         print(f"Precision: {precision}")
         print(f"Recall: {recall}")
         print(f"F1: {f1}")
-        result_row = list(group_vals) if isinstance(group_vals, tuple) else [group_vals]
+        result_row = list(prompt_descriptors) if isinstance(prompt_descriptors, tuple) else [prompt_descriptors]
         result_row += [accuracy, precision, recall, f1]
 
         if include_se:
-            participant_ids = group_df["unique_text_id"].str.rsplit("_", n=1).str[0]
-            _, accuracy_se = metric_standard_errors.bootstrap_accuracy(
+            participant_ids = prompt_responses["unique_text_id"].str.rsplit("_", n=1).str[0]
+            accuracy_se = metric_standard_errors.bootstrap_accuracy(
                 y_true, y_pred, participant_ids, n_bootstraps, random_state
             )
-            _, precision_se = metric_standard_errors.bootstrap_precision(
+            precision_se = metric_standard_errors.bootstrap_precision(
                 y_true, y_pred, participant_ids, n_bootstraps, random_state
             )
-            _, recall_se = metric_standard_errors.bootstrap_recall(
+            recall_se = metric_standard_errors.bootstrap_recall(
                 y_true, y_pred, participant_ids, n_bootstraps, random_state
             )
             _, f1_se = metric_standard_errors.bootstrap_f1(
