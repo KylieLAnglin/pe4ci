@@ -1,5 +1,4 @@
 # %%
-import os
 import random
 from itertools import product
 
@@ -36,8 +35,7 @@ GOLD_PATH = start.DATA_DIR + f"clean/{CONCEPT}_coding_final.xlsx"
 IMPORT_BASELINE_PROMPTS = (
     start.MAIN_DIR + f"results/{PLATFORM}_{CONCEPT}_baseline_zero_results_train.xlsx"
 )
-TOP_FILLED_PATH = start.DATA_DIR + f"fewshot_examples/{PLATFORM}_{CONCEPT}_cot_few_top_template_w_reasoning.xlsx"
-BOTTOM_FILLED_PATH = start.DATA_DIR + f"fewshot_examples/{PLATFORM}_{CONCEPT}_cot_few_bottom_template_w_reasoning.xlsx"
+FILLED_PATH = start.DATA_DIR + f"fewshot_examples/{PLATFORM}_{CONCEPT}_cot_few_template_w_reasoning.xlsx"
 
 EXPORT_RESPONSE_PATH = (
     start.DATA_DIR + f"responses_train/{PLATFORM}_{CONCEPT}_cot_few_responses_train.xlsx"
@@ -67,18 +65,10 @@ if SAMPLE:
 prompt_df = pd.read_excel(IMPORT_BASELINE_PROMPTS, sheet_name="results")
 
 top_prompt = prompt_df.loc[prompt_df["F1"].idxmax(), "prompt"] + COT_TASK_SUFFIX
-bottom_prompt = prompt_df.loc[prompt_df["F1"].idxmin(), "prompt"] + COT_TASK_SUFFIX
 
 # %%
-# ------------------ LOAD FILLED FILES ------------------
-if not os.path.exists(TOP_FILLED_PATH):
-    raise FileNotFoundError(f"Missing: {TOP_FILLED_PATH}")
-
-if not os.path.exists(BOTTOM_FILLED_PATH):
-    raise FileNotFoundError(f"Missing: {BOTTOM_FILLED_PATH}")
-
-top_df = pd.read_excel(TOP_FILLED_PATH)
-bottom_df = pd.read_excel(BOTTOM_FILLED_PATH)
+# ------------------ LOAD FILLED FILE ------------------
+top_df = pd.read_excel(FILLED_PATH)
 
 # %%
 # ------------------ BUILD VARIANTS ------------------
@@ -108,32 +98,6 @@ for combo in product([1, 2], repeat=len(top_df)):
         }
     )
 
-bottom_variants_all = []
-for combo in product([1, 2], repeat=len(bottom_df)):
-    parts = []
-    for i, row in enumerate(bottom_df.itertuples()):
-        cot = row.exemplar_cot1 if combo[i] == 1 else row.exemplar_cot2
-        label = "yes" if row.label == 1 else "no"
-        parts.append(
-            f'Text: "{row.text}"\n'
-            f"Reasoning: {cot}\n"
-            f"Answer: ```{label}```"
-        )
-    example_block = "\n\n".join(parts)
-    if "Here is the text:" not in bottom_prompt:
-        raise ValueError('Prompt must contain "Here is the text:"')
-    full_prompt = bottom_prompt.replace(
-        "Here is the text:",
-        f"Here are some examples:\n{example_block}\n\nHere is the text:",
-    )
-    bottom_variants_all.append(
-        {
-            "prompt_id": f"botcot_{''.join(map(str, combo))}",
-            "prompt": full_prompt,
-            "combination": "".join(map(str, combo)),
-        }
-    )
-
 # %%
 # ------------------ SELECT VARIANTS ------------------
 top_all_ones = "1" * len(top_df)
@@ -148,19 +112,6 @@ for variant in top_variants_all:
         top_remaining_variants.append(variant)
 
 top_variants = top_fixed_variants + random.sample(top_remaining_variants, NUM_SAMPLE_VARIANTS)
-
-bottom_all_ones = "1" * len(bottom_df)
-bottom_all_twos = "2" * len(bottom_df)
-
-bottom_fixed_variants = []
-bottom_remaining_variants = []
-for variant in bottom_variants_all:
-    if variant["combination"] in [bottom_all_ones, bottom_all_twos]:
-        bottom_fixed_variants.append(variant)
-    else:
-        bottom_remaining_variants.append(variant)
-
-bottom_variants = bottom_fixed_variants + random.sample(bottom_remaining_variants, NUM_SAMPLE_VARIANTS)
 
 # %%
 # ------------------ RESUME FROM PROGRESS FILE ------------------
@@ -178,32 +129,30 @@ except FileNotFoundError:
 # ------------------ RUN MODEL ------------------
 counter = 0
 
-for category, variants in [("top", top_variants), ("bottom", bottom_variants)]:
-    for variant in tqdm(variants, desc=f"{category} CoT"):
+for variant in tqdm(top_variants, desc="CoT Variants"):
 
-        if variant["prompt_id"] in completed_prompt_ids:
-            continue
+    if variant["prompt_id"] in completed_prompt_ids:
+        continue
 
-        rows = classify.get_classifications_from_prompt(
-            prompt_text=variant["prompt"],
-            prompt_id=variant["prompt_id"],
-            df=df_eval[["unique_text_id", "text"]].copy(),
-            platform=PLATFORM,
-            temperature=TEMPERATURE,
-        )
+    rows = classify.get_classifications_from_prompt(
+        prompt_text=variant["prompt"],
+        prompt_id=variant["prompt_id"],
+        df=df_eval[["unique_text_id", "text"]].copy(),
+        platform=PLATFORM,
+        temperature=TEMPERATURE,
+    )
 
-        for response_row in rows:
-            response_row["category"] = category
-            response_row["combination"] = variant["combination"]
+    for response_row in rows:
+        response_row["combination"] = variant["combination"]
 
-        response_rows.extend(rows)
-        completed_prompt_ids.add(variant["prompt_id"])
+    response_rows.extend(rows)
+    completed_prompt_ids.add(variant["prompt_id"])
 
-        counter += 1
+    counter += 1
 
-        if counter % SAVE_EVERY == 0:
-            pd.DataFrame(response_rows).to_excel(TEMP_RESPONSE_PATH, index=False)
-            print(f"Saved progress after {counter} new prompts")
+    if counter % SAVE_EVERY == 0:
+        pd.DataFrame(response_rows).to_excel(TEMP_RESPONSE_PATH, index=False)
+        print(f"Saved progress after {counter} new prompts")
 
 # %%
 # ------------------ SAVE RESPONSES ------------------
@@ -221,7 +170,7 @@ scored_df = long_df.merge(df_gold, on="unique_text_id", how="inner")
 classify.export_results_to_excel(
     df=scored_df,
     output_path=EXPORT_RESULTS_PATH,
-    group_col=["prompt_id", "combination", "category"],
+    group_col=["prompt_id", "combination"],
     prompt_col="prompt",
     y_true_col="human_code",
     y_pred_col="classification",

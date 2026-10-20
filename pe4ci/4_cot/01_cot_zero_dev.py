@@ -38,12 +38,10 @@ RESULTS_PATH = (
 baseline_results = pd.read_excel(IMPORT_RESULTS_PATH, sheet_name="results")
 
 top_prompt = baseline_results.loc[baseline_results["F1"].idxmax(), "prompt"]
-bottom_prompt = baseline_results.loc[baseline_results["F1"].idxmin(), "prompt"]
 
 prompt_df = pd.DataFrame(
     [
         {"prompt_id": "top_cot", "prompt": top_prompt + COT_SUFFIX},
-        {"prompt_id": "bottom_cot", "prompt": bottom_prompt + COT_SUFFIX},
     ]
 )
 
