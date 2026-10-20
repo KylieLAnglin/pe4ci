@@ -7,126 +7,85 @@ from pe4ci.library import start, metric_standard_errors
 
 # %%
 # ------------------ SETUP ------------------
-CONCEPTS = ["gratitude", "ncb", "mm"]
-PLATFORMS = ["openai", "llama3.3"]
+CONCEPT = start.CONCEPT
+PLATFORM = start.PLATFORM
 
 N_BOOTSTRAPS = 1000
 RANDOM_STATE = 12
 
 RESPONSES_DIR = start.DATA_DIR + "responses_dev/"
-RESULTS_DIR = start.RESULTS_DIR
+GOLD_PATH = start.DATA_DIR + f"clean/{CONCEPT}_coding_final.xlsx"
+EXPORT_RESULTS_PATH = start.RESULTS_DIR + f"{PLATFORM}_{CONCEPT}_dev_results.xlsx"
 
-TECHNIQUE_CONFIGS = {
-    "baseline_zero": {
-        "group_col": [
-            "prompt_id",
-            "context_part_num",
-            "task_part_num",
-            "defn_part_num",
-            "num_guidance_items",
-            "guidance_part_nums",
-        ],
-    },
-    "baseline_few": {
-        "group_col": ["prompt_id", "category", "num_examples"],
-    },
-    "ape_zero": {
-        "group_col": ["prompt_id", "category", "generation", "variant_id"],
-    },
-    "ape_few": {
-        "group_col": ["prompt_id", "category", "num_examples", "sample_id"],
-    },
-    "persona_zero": {
-        "group_col": ["prompt_id", "category", "persona"],
-    },
-    "persona_few": {
-        "group_col": ["prompt_id", "category"],
-    },
-    "cot_zero": {
-        "group_col": "prompt_id",
-    },
-    "cot_few": {
-        "group_col": ["prompt_id", "category", "combination"],
-    },
-    "explanation_few": {
-        "group_col": ["prompt_id", "category", "combination"],
-    },
+TECHNIQUE_GROUP_COLUMNS = {
+    "baseline_zero": [
+        "prompt_id",
+        "context_part_num",
+        "task_part_num",
+        "defn_part_num",
+        "num_guidance_items",
+        "guidance_part_nums",
+    ],
+    "baseline_few": ["prompt_id", "num_examples"],
+    "ape_zero": ["prompt_id", "generation", "variant_id"],
+    "ape_few": ["prompt_id", "num_examples", "sample_id"],
+    "persona_zero": ["prompt_id", "persona"],
+    "persona_few": ["prompt_id"],
+    "cot_zero": ["prompt_id"],
+    "cot_few": ["prompt_id", "combination"],
+    "explanation_few": ["prompt_id", "combination"],
 }
 
 # %%
-# ------------------ ESTIMATE AND EXPORT RESULTS ------------------
-for concept in CONCEPTS:
-    gold_path = start.DATA_DIR + f"clean/{concept}_coding_final.xlsx"
+# ------------------ LOAD GOLD CODES ------------------
+df_gold = pd.read_excel(GOLD_PATH)
+df_gold = df_gold[["unique_text_id", "human_code"]].copy()
 
-    df_gold = pd.read_excel(gold_path)
-    df_gold = df_gold[["unique_text_id", "human_code"]].copy()
+# %%
+# ------------------ ESTIMATE RESULTS FOR EACH TECHNIQUE ------------------
+all_metric_rows = []
 
-    for platform in PLATFORMS:
-        print(f"Processing {platform} - {concept}...")
+for technique_name, group_col in TECHNIQUE_GROUP_COLUMNS.items():
+    response_path = RESPONSES_DIR + f"{PLATFORM}_{CONCEPT}_{technique_name}_responses_dev.xlsx"
 
-        all_metric_rows = []
+    # techniques after the baseline are optional, so skip any that were not run
+    if not os.path.exists(response_path):
+        print(f"Skipping {technique_name}: {response_path} not found")
+        continue
 
-        for technique_name, technique_config in TECHNIQUE_CONFIGS.items():
-            response_file = f"{platform}_{concept}_{technique_name}_responses_dev.xlsx"
-            response_path = RESPONSES_DIR + response_file
+    response_df = pd.read_excel(response_path)
+    scored_df = response_df.merge(df_gold, on="unique_text_id", how="inner")
+    scored_df = scored_df.dropna(subset=["human_code", "classification"]).copy()
 
-            if not os.path.exists(response_path):
-                print(f"Skipping {technique_name}: {response_path} not found")
-                continue
+    technique_rows = []
 
-            response_df = pd.read_excel(response_path)
-            scored_df = response_df.merge(df_gold, on="unique_text_id", how="inner")
+    for group_values, prompt_group in scored_df.groupby(group_col, dropna=False):
+        human_codes = prompt_group["human_code"]
+        classifications = prompt_group["classification"]
+        participant_ids = prompt_group["unique_text_id"].str.rsplit("_", n=1).str[0]
 
-            group_col = technique_config["group_col"]
-            if isinstance(group_col, str):
-                group_col = [group_col]
+        result_row = {"technique": technique_name}
 
-            scored_df = scored_df.dropna(subset=["human_code", "classification"]).copy()
-            prompt_groups = scored_df.groupby(group_col, dropna=False)
+        for column_name, column_value in zip(group_col, list(group_values)):
+            result_row[column_name] = column_value
 
-            technique_rows = []
+        result_row["Accuracy"] = accuracy_score(human_codes, classifications)
+        result_row["Precision"] = precision_score(human_codes, classifications, zero_division=0)
+        result_row["Recall"] = recall_score(human_codes, classifications, zero_division=0)
+        result_row["F1"] = f1_score(human_codes, classifications, zero_division=0)
+        result_row["Accuracy SE"] = metric_standard_errors.bootstrap_accuracy(human_codes, classifications, participant_ids, N_BOOTSTRAPS, RANDOM_STATE)
+        result_row["Precision SE"] = metric_standard_errors.bootstrap_precision(human_codes, classifications, participant_ids, N_BOOTSTRAPS, RANDOM_STATE)
+        result_row["Recall SE"] = metric_standard_errors.bootstrap_recall(human_codes, classifications, participant_ids, N_BOOTSTRAPS, RANDOM_STATE)
+        result_row["F1 SE"] = metric_standard_errors.bootstrap_f1(human_codes, classifications, participant_ids, N_BOOTSTRAPS, RANDOM_STATE)
+        result_row["prompt"] = prompt_group["prompt"].iloc[0]
 
-            for group_values, prompt_group in prompt_groups:
-                human_codes = prompt_group["human_code"]
-                classifications = prompt_group["classification"]
-                participant_ids = prompt_group["unique_text_id"].str.rsplit("_", n=1).str[0]
+        technique_rows.append(result_row)
 
-                if isinstance(group_values, tuple):
-                    group_values_list = list(group_values)
-                else:
-                    group_values_list = [group_values]
+    all_metric_rows.extend(technique_rows)
+    print(f"Processed {technique_name}: {len(technique_rows)} rows")
 
-                accuracy = accuracy_score(human_codes, classifications)
-                precision = precision_score(human_codes, classifications, zero_division=0)
-                recall = recall_score(human_codes, classifications, zero_division=0)
-                f1 = f1_score(human_codes, classifications, zero_division=0)
-
-                acc_se = metric_standard_errors.bootstrap_accuracy(human_codes, classifications, participant_ids, N_BOOTSTRAPS, RANDOM_STATE)
-                prec_se = metric_standard_errors.bootstrap_precision(human_codes, classifications, participant_ids, N_BOOTSTRAPS, RANDOM_STATE)
-                rec_se = metric_standard_errors.bootstrap_recall(human_codes, classifications, participant_ids, N_BOOTSTRAPS, RANDOM_STATE)
-                _, f1_se = metric_standard_errors.bootstrap_f1(human_codes, classifications, participant_ids, N_BOOTSTRAPS, RANDOM_STATE)
-
-                result_row = {"technique": technique_name}
-
-                for column_name, column_value in zip(group_col, group_values_list):
-                    result_row[column_name] = column_value
-
-                result_row["Accuracy"] = accuracy
-                result_row["Precision"] = precision
-                result_row["Recall"] = recall
-                result_row["F1"] = f1
-                result_row["Accuracy SE"] = acc_se
-                result_row["Precision SE"] = prec_se
-                result_row["Recall SE"] = rec_se
-                result_row["F1 SE"] = f1_se
-                result_row["prompt"] = prompt_group["prompt"].iloc[0]
-
-                technique_rows.append(result_row)
-
-            all_metric_rows.extend(technique_rows)
-            print(f"Processed {technique_name}: {len(technique_rows)} rows")
-
-        output_path = RESULTS_DIR + f"{platform}_{concept}_dev_results.xlsx"
-        results_df = pd.DataFrame(all_metric_rows)
-        results_df.to_excel(output_path, index=False, sheet_name="results")
-        print(f"Saved: {output_path}")
+# %%
+# ------------------ EXPORT ------------------
+results_df = pd.DataFrame(all_metric_rows)
+results_df.to_excel(EXPORT_RESULTS_PATH, index=False, sheet_name="results")
+print(f"Saved: {EXPORT_RESULTS_PATH}")

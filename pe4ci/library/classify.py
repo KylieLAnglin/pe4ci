@@ -188,7 +188,7 @@ def export_results_to_excel(
 
     # Usually, we group responses by prompt id but for some prompting types we group 
     # by multiple prompt descriptors just to store those descriptors
-    # e.g. APE: group_col=["prompt_id", "category", "generation", "variant_id"]
+    # e.g. APE: group_col=["prompt_id", "generation", "variant_id"]
     if isinstance(group_col, str):
         group_col = [group_col]
 
@@ -232,7 +232,7 @@ def export_results_to_excel(
             recall_se = metric_standard_errors.bootstrap_recall(
                 y_true, y_pred, participant_ids, n_bootstraps, random_state
             )
-            _, f1_se = metric_standard_errors.bootstrap_f1(
+            f1_se = metric_standard_errors.bootstrap_f1(
                 y_true, y_pred, participant_ids, n_bootstraps, random_state
             )
             result_row += [accuracy_se, precision_se, recall_se, f1_se]
