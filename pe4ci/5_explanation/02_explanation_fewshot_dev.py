@@ -33,14 +33,10 @@ df_gold = pd.read_excel(GOLD_PATH)
 df_gold = df_gold[["unique_text_id", "human_code"]].copy()
 
 # %%
-# ------------------ LOAD BEST PROMPTS FROM TRAIN ------------------
+# ------------------ LOAD BEST PROMPT FROM TRAIN ------------------
 train_df = pd.read_excel(TRAIN_RESULTS_PATH, sheet_name="results")
 
-best_prompts = (
-    train_df.sort_values(["category", "F1"], ascending=[True, False])
-    .drop_duplicates(subset=["category"], keep="first")
-    .reset_index(drop=True)
-)
+best_prompts = train_df.sort_values("F1", ascending=False).head(1).reset_index(drop=True)
 
 # %%
 # ------------------ EVALUATE ON DEV SET ------------------
@@ -60,7 +56,6 @@ for row in tqdm(
     )
 
     for r in eval_rows:
-        r["category"] = row.category
         r["combination"] = row.combination
 
     response_rows.extend(eval_rows)
@@ -79,7 +74,7 @@ scored_df = long_df.merge(df_gold, on="unique_text_id", how="inner")
 classify.export_results_to_excel(
     df=scored_df,
     output_path=DEV_RESULTS_PATH,
-    group_col=["prompt_id", "category", "combination"],
+    group_col=["prompt_id", "combination"],
     prompt_col="prompt",
     y_true_col="human_code",
     y_pred_col="classification",
