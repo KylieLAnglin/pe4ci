@@ -18,7 +18,7 @@ print(f"Creating CoT Fewshot Template for {CONCEPT} on {PLATFORM}")
 EXAMPLES_PATH = start.DATA_DIR + f"fewshot_examples/{CONCEPT}_fewshot_train_samples.json"
 
 IMPORT_RESULTS_PATH = (
-    start.MAIN_DIR + f"results/{PLATFORM}_{CONCEPT}_baseline_few_results_train.xlsx"
+    start.RESULTS_DIR + f"{PLATFORM}_{CONCEPT}_baseline_few_results_train.xlsx"
 )
 
 TEMPLATE_PATH = start.DATA_DIR + f"fewshot_examples/{PLATFORM}_{CONCEPT}_cot_few_template.xlsx"

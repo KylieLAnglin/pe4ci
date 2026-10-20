@@ -19,14 +19,14 @@ DATA_PATH = start.DATA_DIR + f"clean/{CONCEPT}_final.xlsx"
 GOLD_PATH = start.DATA_DIR + f"clean/{CONCEPT}_coding_final.xlsx"
 
 IMPORT_RESULTS_PATH = (
-    start.MAIN_DIR + f"results/{PLATFORM}_{CONCEPT}_baseline_zero_results_train.xlsx"
+    start.RESULTS_DIR + f"{PLATFORM}_{CONCEPT}_baseline_zero_results_train.xlsx"
 )
 RESPONSE_PATH = (
     start.DATA_DIR
     + f"responses_dev/{PLATFORM}_{CONCEPT}_baseline_zero_responses_dev.xlsx"
 )
 RESULTS_PATH = (
-    start.MAIN_DIR + f"results/{PLATFORM}_{CONCEPT}_baseline_zero_results_dev.xlsx"
+    start.RESULTS_DIR + f"{PLATFORM}_{CONCEPT}_baseline_zero_results_dev.xlsx"
 )
 
 # %%

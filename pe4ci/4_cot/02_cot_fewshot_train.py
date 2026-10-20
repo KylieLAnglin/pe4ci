@@ -12,7 +12,8 @@ from pe4ci.library import start, classify
 CONCEPT = start.CONCEPT
 PLATFORM = start.PLATFORM
 MODEL = start.MODEL
-SAMPLE = False
+SAMPLE = start.SAMPLE
+RESUME = start.RESUME
 SEED = start.SEED
 TEMPERATURE = 0.0001
 
@@ -33,7 +34,7 @@ DATA_PATH = start.DATA_DIR + f"clean/{CONCEPT}_final.xlsx"
 GOLD_PATH = start.DATA_DIR + f"clean/{CONCEPT}_coding_final.xlsx"
 
 IMPORT_BASELINE_PROMPTS = (
-    start.MAIN_DIR + f"results/{PLATFORM}_{CONCEPT}_baseline_zero_results_train.xlsx"
+    start.RESULTS_DIR + f"{PLATFORM}_{CONCEPT}_baseline_zero_results_train.xlsx"
 )
 FILLED_PATH = start.DATA_DIR + f"fewshot_examples/{PLATFORM}_{CONCEPT}_cot_few_template_w_reasoning.xlsx"
 
@@ -45,7 +46,7 @@ TEMP_RESPONSE_PATH = (
     + f"responses_train/{PLATFORM}_{CONCEPT}_cot_few_responses_train_PROGRESS{RUN_TAG}.xlsx"
 )
 EXPORT_RESULTS_PATH = (
-    start.MAIN_DIR + f"results/{PLATFORM}_{CONCEPT}_cot_few_results_train.xlsx"
+    start.RESULTS_DIR + f"{PLATFORM}_{CONCEPT}_cot_few_results_train.xlsx"
 )
 
 # %%
@@ -115,15 +116,14 @@ top_variants = top_fixed_variants + random.sample(top_remaining_variants, NUM_SA
 
 # %%
 # ------------------ RESUME FROM PROGRESS FILE ------------------
-try:
+if RESUME:
     existing_df = pd.read_excel(TEMP_RESPONSE_PATH)
     completed_prompt_ids = set(existing_df["prompt_id"].unique())
     response_rows = existing_df.to_dict("records")
-    print(f"Found existing progress for {len(completed_prompt_ids)} prompts")
-except FileNotFoundError:
+    print(f"Resuming with {len(completed_prompt_ids)} completed prompts")
+else:
     completed_prompt_ids = set()
     response_rows = []
-    print("No existing progress file found")
 
 # %%
 # ------------------ RUN MODEL ------------------

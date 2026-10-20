@@ -10,7 +10,7 @@ from pe4ci.library import start, classify
 CONCEPT = start.CONCEPT
 PLATFORM = start.PLATFORM
 MODEL = start.MODEL
-SAMPLE = False
+SAMPLE = start.SAMPLE
 SEED = start.SEED
 TEMPERATURE = 0.0001
 
@@ -23,17 +23,17 @@ EXAMPLES_PATH = (
     start.DATA_DIR + f"fewshot_examples/{CONCEPT}_fewshot_train_samples.json"
 )
 PERSONA_ZERO_RESULTS_PATH = (
-    start.MAIN_DIR + f"results/{PLATFORM}_{CONCEPT}_persona_zero_results_dev.xlsx"
+    start.RESULTS_DIR + f"{PLATFORM}_{CONCEPT}_persona_zero_results_dev.xlsx"
 )
 FEWSHOT_BASELINE_RESULTS_PATH = (
-    start.MAIN_DIR + f"results/{PLATFORM}_{CONCEPT}_baseline_few_results_dev.xlsx"
+    start.RESULTS_DIR + f"{PLATFORM}_{CONCEPT}_baseline_few_results_dev.xlsx"
 )
 RESPONSE_PATH = (
     start.DATA_DIR
     + f"responses_dev/{PLATFORM}_{CONCEPT}_persona_few_responses_dev.xlsx"
 )
 RESULTS_PATH = (
-    start.MAIN_DIR + f"results/{PLATFORM}_{CONCEPT}_persona_few_results_dev.xlsx"
+    start.RESULTS_DIR + f"{PLATFORM}_{CONCEPT}_persona_few_results_dev.xlsx"
 )
 
 # %%

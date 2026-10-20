@@ -2,7 +2,6 @@
 import pandas as pd
 import matplotlib.pyplot as plt
 from sklearn.metrics import f1_score
-from tqdm import tqdm
 
 from pe4ci.library import start, classify
 
@@ -11,7 +10,8 @@ from pe4ci.library import start, classify
 CONCEPT = start.CONCEPT
 PLATFORM = start.PLATFORM
 MODEL = start.MODEL
-SAMPLE = False
+SAMPLE = start.SAMPLE
+RESUME = start.RESUME
 SEED = start.SEED
 TEMPERATURE = 0.0001
 RUN_TAG = "_sample" if SAMPLE else ""
@@ -45,7 +45,7 @@ DATA_PATH = start.DATA_DIR + f"clean/{CONCEPT}_final.xlsx"
 GOLD_PATH = start.DATA_DIR + f"clean/{CONCEPT}_coding_final.xlsx"
 
 IMPORT_RESULTS_PATH = (
-    start.MAIN_DIR + f"results/{PLATFORM}_{CONCEPT}_baseline_zero_results_dev.xlsx"
+    start.RESULTS_DIR + f"{PLATFORM}_{CONCEPT}_baseline_zero_results_dev.xlsx"
 )
 
 TRACKING_PATH = f"{start.RESULTS_DIR}{PLATFORM}_{CONCEPT}_ape_tracking_train.xlsx"
@@ -60,7 +60,7 @@ TEMP_RESPONSE_PATH = (
     + f"responses_train/{PLATFORM}_{CONCEPT}_ape_zero_responses_train_PROGRESS{RUN_TAG}.xlsx"
 )
 EXPORT_RESULTS_PATH = (
-    start.MAIN_DIR + f"results/{PLATFORM}_{CONCEPT}_ape_zero_results_train.xlsx"
+    start.RESULTS_DIR + f"{PLATFORM}_{CONCEPT}_ape_zero_results_train.xlsx"
 )
 
 # %%
@@ -92,24 +92,22 @@ if (original_prompts == prompt_df["prompt"]).all():
 
 # %%
 # ------------------ RESUME RESPONSES ------------------
-try:
+if RESUME:
     existing_response_df = pd.read_excel(TEMP_RESPONSE_PATH)
     all_response_rows = existing_response_df.to_dict("records")
-    print(f"Found existing response progress: {len(existing_response_df)} rows")
-except FileNotFoundError:
+    print(f"Resuming with {len(existing_response_df)} response rows")
+else:
     all_response_rows = []
-    print("No existing response progress file found")
 
 # %%
 # ------------------ APE LOOP (SEEDED WITH TOP BASELINE PROMPT) ------------------
-try:
+if RESUME:
     tracking_df = pd.read_excel(TRACKING_PROGRESS_PATH)
     tracking_records = tracking_df.to_dict("records")
-    print(f"Found existing tracking progress: {len(tracking_df)} rows")
-except FileNotFoundError:
+    print(f"Resuming with {len(tracking_df)} tracked variants")
+else:
     tracking_df = pd.DataFrame()
     tracking_records = []
-    print("No existing tracking progress file found")
 
 current_prompt = prompt_df.loc[prompt_df["F1"].idxmax(), "prompt"]
 

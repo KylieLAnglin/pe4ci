@@ -13,11 +13,11 @@ from pe4ci.library import start, classify
 CONCEPT = start.CONCEPT
 PLATFORM = start.PLATFORM
 MODEL = start.MODEL
-SAMPLE = False
+SAMPLE = start.SAMPLE
+RESUME = start.RESUME
 SEED = start.SEED
 TEMPERATURE = 0.0001
 
-RUN_CLASSIFICATIONS = True
 SAVE_EVERY = 1
 RUN_TAG = "_sample" if SAMPLE else ""
 
@@ -33,7 +33,7 @@ FEWSHOT_EXAMPLES_PATH = (
     start.DATA_DIR + f"fewshot_examples/{CONCEPT}_fewshot_train_samples.json"
 )
 IMPORT_RESULTS_PATH = (
-    start.MAIN_DIR + f"results/{PLATFORM}_{CONCEPT}_ape_zero_results_dev.xlsx"
+    start.RESULTS_DIR + f"{PLATFORM}_{CONCEPT}_ape_zero_results_dev.xlsx"
 )
 EXPORT_RESPONSE_PATH = (
     start.DATA_DIR
@@ -44,7 +44,7 @@ TEMP_RESPONSE_PATH = (
     + f"responses_train/{PLATFORM}_{CONCEPT}_ape_few_responses_train_PROGRESS{RUN_TAG}.xlsx"
 )
 EXPORT_RESULTS_PATH = (
-    start.MAIN_DIR + f"results/{PLATFORM}_{CONCEPT}_ape_few_results_train.xlsx"
+    start.RESULTS_DIR + f"{PLATFORM}_{CONCEPT}_ape_few_results_train.xlsx"
 )
 
 # %%
@@ -78,72 +78,69 @@ if SAMPLE:
 
 # %%
 # ------------------ EVALUATE SAMPLES ------------------
-if RUN_CLASSIFICATIONS:
+if RESUME:
+    existing_df = pd.read_excel(TEMP_RESPONSE_PATH)
+    completed_prompt_ids = set(existing_df["prompt_id"].unique())
+    response_rows = existing_df.to_dict("records")
+    print(f"Resuming with {len(completed_prompt_ids)} completed prompts")
+else:
+    completed_prompt_ids = set()
     response_rows = []
 
-    try:
-        existing_df = pd.read_excel(TEMP_RESPONSE_PATH)
-        completed_prompt_ids = set(existing_df["prompt_id"].unique())
-        response_rows = existing_df.to_dict("records")
-        print(f"Found existing progress for {len(completed_prompt_ids)} prompts")
-    except FileNotFoundError:
-        completed_prompt_ids = set()
-        print("No existing progress file found")
+if "{TEXT}" not in ape_prompt:
+    raise ValueError("ape_prompt must contain {TEXT}")
+if "Here is the text:" not in ape_prompt:
+    raise ValueError('ape_prompt must contain the phrase "Here is the text:"')
 
-    if "{TEXT}" not in ape_prompt:
-        raise ValueError("ape_prompt must contain {TEXT}")
-    if "Here is the text:" not in ape_prompt:
-        raise ValueError('ape_prompt must contain the phrase "Here is the text:"')
+counter = 0
 
-    counter = 0
+for sample in tqdm(sample_examples, desc="Evaluating Few-shot Samples"):
+    sample_id = sample["sample_id"]
+    num_examples = sample["num_examples"]
 
-    for sample in tqdm(sample_examples, desc="Evaluating Few-shot Samples"):
-        sample_id = sample["sample_id"]
-        num_examples = sample["num_examples"]
+    example_block = "\n\n".join(
+        [
+            f'Text: "{ex["text"]}"\nAnswer: ```{"yes" if ex["label"] == 1 else "no"}```'
+            for ex in sample["examples"]
+        ]
+    )
 
-        example_block = "\n\n".join(
-            [
-                f'Text: "{ex["text"]}"\nAnswer: ```{"yes" if ex["label"] == 1 else "no"}```'
-                for ex in sample["examples"]
-            ]
-        )
+    prompt_id = f"fewshot_{sample_id}_n{num_examples}"
 
-        prompt_id = f"fewshot_{sample_id}_n{num_examples}"
+    if prompt_id in completed_prompt_ids:
+        continue
 
-        if prompt_id in completed_prompt_ids:
-            continue
+    fewshot_prompt = ape_prompt.replace(
+        "Here is the text:",
+        f"Here are some examples:\n{example_block}\n\nHere is the text:",
+    )
 
-        fewshot_prompt = ape_prompt.replace(
-            "Here is the text:",
-            f"Here are some examples:\n{example_block}\n\nHere is the text:",
-        )
+    rows = classify.get_classifications_from_prompt(
+        prompt_text=fewshot_prompt,
+        prompt_id=prompt_id,
+        df=df_eval[["unique_text_id", "text"]].copy(),
+        platform=PLATFORM,
+        temperature=TEMPERATURE,
+    )
 
-        rows = classify.get_classifications_from_prompt(
-            prompt_text=fewshot_prompt,
-            prompt_id=prompt_id,
-            df=df_eval[["unique_text_id", "text"]].copy(),
-            platform=PLATFORM,
-            temperature=TEMPERATURE,
-        )
+    for response_row in rows:
+        response_row["num_examples"] = num_examples
+        response_row["sample_id"] = sample_id
 
-        for response_row in rows:
-            response_row["num_examples"] = num_examples
-            response_row["sample_id"] = sample_id
+    response_rows.extend(rows)
+    completed_prompt_ids.add(prompt_id)
 
-        response_rows.extend(rows)
-        completed_prompt_ids.add(prompt_id)
+    counter += 1
 
-        counter += 1
+    if counter % SAVE_EVERY == 0:
+        pd.DataFrame(response_rows).to_excel(TEMP_RESPONSE_PATH, index=False)
+        print(f"Saved progress after {counter} new prompts")
 
-        if counter % SAVE_EVERY == 0:
-            pd.DataFrame(response_rows).to_excel(TEMP_RESPONSE_PATH, index=False)
-            print(f"Saved progress after {counter} new prompts")
-
-    long_df = pd.DataFrame(response_rows)
-    long_df.to_excel(TEMP_RESPONSE_PATH, index=False)
-    print(f"Saved: {TEMP_RESPONSE_PATH}")
-    long_df.to_excel(EXPORT_RESPONSE_PATH, index=False)
-    print(f"Saved: {EXPORT_RESPONSE_PATH}")
+long_df = pd.DataFrame(response_rows)
+long_df.to_excel(TEMP_RESPONSE_PATH, index=False)
+print(f"Saved: {TEMP_RESPONSE_PATH}")
+long_df.to_excel(EXPORT_RESPONSE_PATH, index=False)
+print(f"Saved: {EXPORT_RESPONSE_PATH}")
 
 # %%
 # ------------------ EXPORT RESPONSES AND METRICS ------------------

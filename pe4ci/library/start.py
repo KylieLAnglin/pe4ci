@@ -1,10 +1,12 @@
 # ------------------ UPDATE HERE ------------------
 # PLATFORM = "openai", "llama3.3"
 # CONCEPT = "gratitude", "mm", "ncb"
-# SAMPLE = True, False
+# SAMPLE = True, False (True runs a small sample to test the pipeline)
+# RESUME = True, False (True continues an interrupted training run from its PROGRESS file)
 PLATFORM = "openai"
 CONCEPT = "gratitude"
 SAMPLE = False
+RESUME = False
 
 # Code runs out of the box with openai and gratitude.
 # llama3.3 requires an Ollama server (e.g., in a high performance computing environment).

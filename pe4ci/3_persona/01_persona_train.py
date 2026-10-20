@@ -9,7 +9,7 @@ from pe4ci.library import start, classify
 CONCEPT = start.CONCEPT
 PLATFORM = start.PLATFORM
 MODEL = start.MODEL
-SAMPLE = False
+SAMPLE = start.SAMPLE
 SEED = start.SEED
 TEMPERATURE = 0.0001
 
@@ -21,14 +21,14 @@ GOLD_PATH = start.DATA_DIR + f"clean/{CONCEPT}_coding_final.xlsx"
 PROMPT_PATH = start.DATA_DIR + f"prompts/{CONCEPT}_baseline_variants.xlsx"
 
 TRAIN_RESULTS_PATH = (
-    start.MAIN_DIR + f"results/{PLATFORM}_{CONCEPT}_baseline_zero_results_dev.xlsx"
+    start.RESULTS_DIR + f"{PLATFORM}_{CONCEPT}_baseline_zero_results_dev.xlsx"
 )
 EXPORT_RESPONSE_PATH = (
     start.DATA_DIR
     + f"responses_train/{PLATFORM}_{CONCEPT}_persona_zero_responses_train.xlsx"
 )
 EXPORT_RESULTS_PATH = (
-    start.MAIN_DIR + f"results/{PLATFORM}_{CONCEPT}_persona_zero_results_train.xlsx"
+    start.RESULTS_DIR + f"{PLATFORM}_{CONCEPT}_persona_zero_results_train.xlsx"
 )
 
 # %%

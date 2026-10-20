@@ -9,7 +9,8 @@ from pe4ci.library import start, classify
 CONCEPT = start.CONCEPT
 PLATFORM = start.PLATFORM
 MODEL = start.MODEL
-SAMPLE = False
+SAMPLE = start.SAMPLE
+RESUME = start.RESUME
 SEED = start.SEED
 TEMPERATURE = 0.0001
 SAVE_EVERY = 1
@@ -32,7 +33,7 @@ TEMP_RESPONSE_PATH = (
     + f"responses_train/{PLATFORM}_{CONCEPT}_baseline_zero_responses_train_PROGRESS{RUN_TAG}.xlsx"
 )
 RESULTS_PATH = (
-    start.MAIN_DIR + f"results/{PLATFORM}_{CONCEPT}_baseline_zero_results_train.xlsx"
+    start.RESULTS_DIR + f"{PLATFORM}_{CONCEPT}_baseline_zero_results_train.xlsx"
 )
 print(DATA_PATH)
 
@@ -57,16 +58,14 @@ if SAMPLE:
 
 # %%
 # ------------------ RESUME FROM PROGRESS FILE ------------------
-response_rows = []
-
-try:
+if RESUME:
     existing_df = pd.read_excel(TEMP_RESPONSE_PATH)
     completed_prompt_ids = set(existing_df["prompt_id"].unique())
     response_rows = existing_df.to_dict("records")
-    print(f"Found existing progress for {len(completed_prompt_ids)} prompts")
-except FileNotFoundError:
+    print(f"Resuming with {len(completed_prompt_ids)} completed prompts")
+else:
     completed_prompt_ids = set()
-    print("No existing progress file found")
+    response_rows = []
 
 prompts_to_run = prompt_df[~prompt_df["prompt_id"].isin(completed_prompt_ids)].copy()
 

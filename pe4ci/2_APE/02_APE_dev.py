@@ -8,7 +8,7 @@ from pe4ci.library import start, classify
 CONCEPT = start.CONCEPT
 PLATFORM = start.PLATFORM
 MODEL = start.MODEL
-SAMPLE = False
+SAMPLE = start.SAMPLE
 SEED = start.SEED
 TEMPERATURE = 0.0001
 
@@ -23,7 +23,7 @@ EXPORT_RESPONSE_PATH = (
     start.DATA_DIR + f"responses_dev/{PLATFORM}_{CONCEPT}_ape_zero_responses_dev.xlsx"
 )
 EXPORT_RESULTS_PATH = (
-    start.MAIN_DIR + f"results/{PLATFORM}_{CONCEPT}_ape_zero_results_dev.xlsx"
+    start.RESULTS_DIR + f"{PLATFORM}_{CONCEPT}_ape_zero_results_dev.xlsx"
 )
 
 # %%
