@@ -1,8 +1,10 @@
+matplotlib
 numpy
 openai
+openpyxl
 pandas
 scikit-learn
 scipy
-statsmodels
 tqdm
-openpyxl
+# only needed for llama3.3
+langchain-ollama

@@ -3,7 +3,7 @@ import os
 import pandas as pd
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
 
-from crisp.library import start, metric_standard_errors
+from pe4ci.library import start, metric_standard_errors
 
 # %%
 # ------------------ SETUP ------------------

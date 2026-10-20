@@ -7,7 +7,7 @@ from scipy.stats import norm
 
 from sklearn.metrics import f1_score
 
-from crisp.library import start, metric_standard_errors
+from pe4ci.library import start, metric_standard_errors
 
 # %%
 # ------------------ SETUP ------------------

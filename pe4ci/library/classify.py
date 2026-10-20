@@ -7,11 +7,11 @@ from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_sc
 from openpyxl import Workbook, load_workbook
 import re
 
-from crisp.library import start, metric_standard_errors
-from crisp.library.start import PLATFORM
+from pe4ci.library import start, metric_standard_errors
+from pe4ci.library.start import PLATFORM
 
 if PLATFORM == "openai":
-    from crisp.library import secrets
+    from pe4ci.library import secrets
 
 
 # ------------------ CLIENT SETUP ------------------

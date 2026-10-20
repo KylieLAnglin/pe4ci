@@ -7,7 +7,7 @@ import numpy as np
 import pandas as pd
 from tqdm import tqdm
 
-from crisp.library import start, classify
+from pe4ci.library import start, classify
 
 # %%
 # ------------------ SETUP ------------------

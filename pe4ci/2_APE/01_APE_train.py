@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 from sklearn.metrics import f1_score
 from tqdm import tqdm
 
-from crisp.library import start, classify
+from pe4ci.library import start, classify
 
 # %%
 # ------------------ SETUP ------------------

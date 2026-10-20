@@ -3,7 +3,7 @@ import random
 
 import pandas as pd
 
-from crisp.library import start
+from pe4ci.library import start
 
 # %%
 # ------------------ SETUP ------------------

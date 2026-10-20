@@ -2,7 +2,7 @@
 import pandas as pd
 import numpy as np
 
-from crisp.library import start
+from pe4ci.library import start
 
 # %%
 # ------------------ SETUP ------------------

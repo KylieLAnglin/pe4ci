@@ -2,7 +2,7 @@
 import pandas as pd
 import matplotlib.pyplot as plt
 
-from crisp.library import start
+from pe4ci.library import start
 
 # %%
 # ------------------ SETUP ------------------
