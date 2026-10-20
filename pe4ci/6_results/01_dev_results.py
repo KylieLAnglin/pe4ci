@@ -104,7 +104,7 @@ for concept in CONCEPTS:
                 acc_se = metric_standard_errors.bootstrap_accuracy(human_codes, classifications, participant_ids, N_BOOTSTRAPS, RANDOM_STATE)
                 prec_se = metric_standard_errors.bootstrap_precision(human_codes, classifications, participant_ids, N_BOOTSTRAPS, RANDOM_STATE)
                 rec_se = metric_standard_errors.bootstrap_recall(human_codes, classifications, participant_ids, N_BOOTSTRAPS, RANDOM_STATE)
-                _, f1_se = metric_standard_errors.bootstrap_f1(human_codes, classifications, participant_ids, N_BOOTSTRAPS, RANDOM_STATE)
+                f1_se = metric_standard_errors.bootstrap_f1(human_codes, classifications, participant_ids, N_BOOTSTRAPS, RANDOM_STATE)
 
                 result_row = {"technique": technique_name}
 

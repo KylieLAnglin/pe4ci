@@ -232,7 +232,7 @@ def export_results_to_excel(
             recall_se = metric_standard_errors.bootstrap_recall(
                 y_true, y_pred, participant_ids, n_bootstraps, random_state
             )
-            _, f1_se = metric_standard_errors.bootstrap_f1(
+            f1_se = metric_standard_errors.bootstrap_f1(
                 y_true, y_pred, participant_ids, n_bootstraps, random_state
             )
             result_row += [accuracy_se, precision_se, recall_se, f1_se]
