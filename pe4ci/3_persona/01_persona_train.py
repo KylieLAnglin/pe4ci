@@ -43,17 +43,15 @@ df_gold = pd.read_excel(GOLD_PATH)
 df_gold = df_gold[["unique_text_id", "human_code"]].copy()
 
 # %%
-# ------------------ LOAD BASELINE PROMPTS ------------------
+# ------------------ LOAD TOP BASELINE PROMPT ------------------
 train_results = pd.read_excel(TRAIN_RESULTS_PATH, sheet_name="results")
 
 top_id = train_results.loc[train_results["F1"].idxmax(), "prompt_id"]
-bottom_id = train_results.loc[train_results["F1"].idxmin(), "prompt_id"]
 
 prompt_df = pd.read_excel(PROMPT_PATH, sheet_name="baseline")
 prompt_df = prompt_df.rename(columns={"baseline_prompt_id": "prompt_id"})
 
 top_prompt = prompt_df.loc[prompt_df.prompt_id == top_id, "prompt"].values[0]
-bottom_prompt = prompt_df.loc[prompt_df.prompt_id == bottom_id, "prompt"].values[0]
 
 # %%
 # ------------------ LOAD PERSONAS ------------------
@@ -66,18 +64,16 @@ combos = []
 combo_id = 1
 
 for persona in PERSONAS:
-    for category, base_prompt in [("top", top_prompt), ("bottom", bottom_prompt)]:
-        modified_prompt = persona.strip() + "\n\n" + base_prompt
+    modified_prompt = persona.strip() + "\n\n" + top_prompt
 
-        combos.append(
-            {
-                "prompt_id": combo_id,
-                "prompt": modified_prompt,
-                "category": category,
-                "persona": persona,
-            }
-        )
-        combo_id += 1
+    combos.append(
+        {
+            "prompt_id": combo_id,
+            "prompt": modified_prompt,
+            "persona": persona,
+        }
+    )
+    combo_id += 1
 
 combo_df = pd.DataFrame(combos)
 
@@ -99,7 +95,6 @@ for row in tqdm(
     )
 
     for response_row in rows:
-        response_row["category"] = row.category
         response_row["persona"] = row.persona
 
     response_rows.extend(rows)
@@ -118,7 +113,7 @@ scored_df = long_df.merge(df_gold, on="unique_text_id", how="inner")
 classify.export_results_to_excel(
     df=scored_df,
     output_path=EXPORT_RESULTS_PATH,
-    group_col=["prompt_id", "category", "persona"],
+    group_col=["prompt_id", "persona"],
     prompt_col="prompt",
     y_true_col="human_code",
     y_pred_col="classification",

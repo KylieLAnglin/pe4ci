@@ -41,22 +41,11 @@ df_gold = pd.read_excel(GOLD_PATH)
 df_gold = df_gold[["unique_text_id", "human_code"]].copy()
 
 # %%
-# ------------------ SELECT BEST PROMPTS ------------------
+# ------------------ SELECT BEST PROMPT ------------------
 results_df = pd.read_excel(IMPORT_RESULTS_PATH, sheet_name="results")
 
-top_row = (
-    results_df[results_df["category"] == "top"]
-    .sort_values("F1", ascending=False)
-    .iloc[0]
-)
-bottom_row = (
-    results_df[results_df["category"] == "bottom"]
-    .sort_values("F1", ascending=False)
-    .iloc[0]
-)
-
-prompt_df = pd.DataFrame([top_row, bottom_row])
-prompt_df["prompt_id"] = ["top_best_persona", "bottom_best_persona"]
+prompt_df = results_df.sort_values("F1", ascending=False).head(1).copy()
+prompt_df["prompt_id"] = "best_persona"
 
 # %%
 # ------------------ RUN CLASSIFICATION ------------------
@@ -76,7 +65,6 @@ for row in tqdm(
     )
 
     for response_row in rows:
-        response_row["category"] = row.category
         response_row["persona"] = row.persona
 
     all_rows.extend(rows)
@@ -95,7 +83,7 @@ scored_df = long_df.merge(df_gold, on="unique_text_id", how="inner")
 classify.export_results_to_excel(
     df=scored_df,
     output_path=EXPORT_RESULTS_PATH,
-    group_col=["prompt_id", "category", "persona"],
+    group_col=["prompt_id", "persona"],
     prompt_col="prompt",
     y_true_col="human_code",
     y_pred_col="classification",

@@ -57,25 +57,18 @@ fewshot_samples_df = pd.DataFrame(fewshot_samples)
 fewshot_results = pd.read_excel(FEWSHOT_BASELINE_RESULTS_PATH, sheet_name="results")
 
 top_example_id = int(
-    fewshot_results.loc[fewshot_results["F1"].idxmax(), "prompt_id"].split("_")[2]
-)
-bottom_example_id = int(
-    fewshot_results.loc[fewshot_results["F1"].idxmin(), "prompt_id"].split("_")[2]
+    fewshot_results.loc[fewshot_results["F1"].idxmax(), "prompt_id"].split("_")[1]
 )
 
 top_examples = fewshot_samples_df.loc[
     fewshot_samples_df["sample_id"] == top_example_id, "examples"
 ].iloc[0]
-bottom_examples = fewshot_samples_df.loc[
-    fewshot_samples_df["sample_id"] == bottom_example_id, "examples"
-].iloc[0]
 
 # %%
-# ------------------ LOAD PERSONA PROMPTS ------------------
+# ------------------ LOAD PERSONA PROMPT ------------------
 baseline_df = pd.read_excel(PERSONA_ZERO_RESULTS_PATH, sheet_name="results")
 
 top_prompt = baseline_df.loc[baseline_df["F1"].idxmax(), "prompt"]
-bottom_prompt = baseline_df.loc[baseline_df["F1"].idxmin(), "prompt"]
 
 # %%
 # ------------------ BUILD FEWSHOT PROMPTS ------------------
@@ -83,12 +76,6 @@ top_block = "\n\n".join(
     [
         f'Text: "{ex["text"]}"\nAnswer: ```{"yes" if ex["label"] == 1 else "no"}```'
         for ex in top_examples
-    ]
-)
-bottom_block = "\n\n".join(
-    [
-        f'Text: "{ex["text"]}"\nAnswer: ```{"yes" if ex["label"] == 1 else "no"}```'
-        for ex in bottom_examples
     ]
 )
 
@@ -99,21 +86,10 @@ top_full_prompt = top_prompt.replace(
     f"Here are some examples:\n{top_block}\n\nHere is the text:",
 )
 
-if "Here is the text:" not in bottom_prompt:
-    raise ValueError('Prompt must contain "Here is the text:"')
-bottom_full_prompt = bottom_prompt.replace(
-    "Here is the text:",
-    f"Here are some examples:\n{bottom_block}\n\nHere is the text:",
-)
-
 prompt_df = pd.DataFrame(
     {
-        "prompt_id": [
-            f"{PLATFORM}_{CONCEPT}_persona_top_fewshot_{top_example_id}",
-            f"{PLATFORM}_{CONCEPT}_persona_bottom_fewshot_{bottom_example_id}",
-        ],
-        "prompt": [top_full_prompt, bottom_full_prompt],
-        "category": ["top", "bottom"],
+        "prompt_id": [f"{PLATFORM}_{CONCEPT}_persona_fewshot_{top_example_id}"],
+        "prompt": [top_full_prompt],
     }
 )
 
@@ -134,9 +110,6 @@ for row in tqdm(
         temperature=TEMPERATURE,
     )
 
-    for response_row in rows:
-        response_row["category"] = row.category
-
     response_rows.extend(rows)
 
 # %%
@@ -153,7 +126,7 @@ scored_df = long_df.merge(df_gold, on="unique_text_id", how="inner")
 classify.export_results_to_excel(
     df=scored_df,
     output_path=RESULTS_PATH,
-    group_col=["prompt_id", "category"],
+    group_col=["prompt_id"],
     prompt_col="prompt",
     y_true_col="human_code",
     y_pred_col="classification",
